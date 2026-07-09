@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>INSAPT — Portail Chaîne d'Approvisionnement</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Libre+Franklin:wght@700;800;900&family=JetBrains+Mono:wght@500;700&family=Noto+Naskh+Arabic:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="scm.css">
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div class="login-wrap" id="loginWrap">
+  <form class="login-card" id="loginForm" autocomplete="off">
+    <div class="flag-ribbon"><i></i><i></i><i></i></div>
+    <div class="login-top">
+      <span class="crest"><span>INSAPT</span></span>
+      <h1 data-i18n="scm.loginTitle">Portail Chaîne d'Approvisionnement</h1>
+      <p data-i18n="scm.loginSub">Accès réservé au responsable SCM de l'INSAPT.</p>
+    </div>
+    <div class="login-body">
+      <div class="login-err" id="loginErr" data-i18n="scm.err">Identifiant ou mot de passe incorrect.</div>
+      <div class="field">
+        <label data-i18n="scm.user">Identifiant</label>
+        <input type="text" id="u" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label data-i18n="scm.pass">Mot de passe</label>
+        <input type="password" id="p" autocomplete="current-password" required>
+      </div>
+      <button class="btn btn-primary" type="submit" data-i18n="scm.signin">Se connecter</button>
+    </div>
+    <div class="login-foot">
+      <a href="../index.html" data-i18n="scm.back">Retour au site public</a>
+      <div class="login-lang">
+        <button type="button" data-lang="fr" aria-pressed="true">FR</button>
+        <button type="button" data-lang="ar" aria-pressed="false">ع</button>
+        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- ============ APP ============ -->
+<div class="app" id="app">
+  <!-- Sidebar -->
+  <aside class="side">
+    <div class="side-top">
+      <span class="crest"><span>INSAPT</span></span>
+      <span><b>SCM</b><small data-i18n="scm.loginTitle">Chaîne d'Approvisionnement</small></span>
+    </div>
+    <nav class="side-nav" id="sideNav">
+      <button data-view="dash" class="active"><span class="ic">▤</span><span data-i18n="scm.tab.dash">Tableau de bord</span></button>
+      <button data-view="proc"><span class="ic">✔</span><span data-i18n="scm.tab.proc">Procédures</span></button>
+      <button data-view="manual"><span class="ic">▦</span><span data-i18n="scm.tab.manual">Manuel des marchés</span></button>
+      <button data-view="barcode"><span class="ic">▮</span><span data-i18n="scm.tab.barcode">Codes-barres</span></button>
+      <button data-view="stock"><span class="ic">▣</span><span data-i18n="scm.tab.stock">Registre des stocks</span></button>
+      <button data-view="reports"><span class="ic">◔</span><span data-i18n="scm.tab.reports">Rapports</span></button>
+      <button data-view="docs"><span class="ic">⎘</span><span data-i18n="scm.tab.docs">Documents & liens</span></button>
+    </nav>
+    <div class="side-foot">
+      <div class="who"><span data-i18n="scm.user">Identifiant</span><b id="whoUser">insaptscm</b></div>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn" style="width:100%" data-i18n="scm.logout">Déconnexion</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <h2 id="viewTitle" data-i18n="scm.tab.dash">Tableau de bord</h2>
+      <div class="spacer"></div>
+      <span class="status-dot" id="connDot"><i></i><span id="connTxt">Local</span></span>
+      <div class="topbar-lang">
+        <button data-lang="fr" aria-pressed="true">FR</button>
+        <button data-lang="ar" aria-pressed="false">ع</button>
+        <button data-lang="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ===== DASHBOARD ===== -->
+      <section class="view on" id="v-dash">
+        <p class="muted" data-i18n="scm.welcome">Espace de gestion des approvisionnements et des stocks</p>
+        <div class="kpis">
+          <div class="kpi"><div class="lab">Articles enregistrés</div><div class="val" id="kAssets">0</div><div class="sub" id="kAssetsSub">—</div></div>
+          <div class="kpi"><div class="lab">Valeur estimée (XAF)</div><div class="val" id="kValue">0</div><div class="sub">Total inventaire</div></div>
+          <div class="kpi"><div class="lab">Catégories</div><div class="val" id="kCats">0</div><div class="sub">Familles d'actifs</div></div>
+          <div class="kpi"><div class="lab">Bailleurs</div><div class="val" id="kDonors">0</div><div class="sub">Sources de financement</div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Répartition par catégorie</h3><div class="spacer"></div><span class="muted" style="font-size:12.5px">Mise à jour en direct</span></div>
+          <div class="panel-body"><canvas id="catChart" height="90"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Derniers articles enregistrés</h3></div>
+          <div class="panel-body"><div class="tbl-scroll"><table class="data" id="recentTbl"><thead></thead><tbody></tbody></table></div></div>
+        </div>
+      </section>
+
+      <!-- ===== PROCEDURES ===== -->
+      <section class="view" id="v-proc">
+        <div class="hint">Ces procédures résument le <b>Manuel de Politiques et Procédures de Passation des Marchés</b> de l'INSAPT. Le manuel complet est consultable dans l'onglet « Manuel des marchés ».</div>
+        <div class="panel"><div class="panel-head"><h3>Circuit de passation — vue synthétique</h3></div>
+          <div class="panel-body" id="procFlow"></div>
+        </div>
+        <div class="panel"><div class="panel-head"><h3>Seuils & méthodes (repères)</h3></div>
+          <div class="panel-body"><div class="tbl-scroll"><table class="data"><thead><tr><th>Méthode</th><th>Champ d'application</th><th>Devis / concurrence</th></tr></thead>
+            <tbody>
+              <tr><td>Achat direct</td><td>Petites dépenses courantes sous seuil</td><td>Bon de commande simple</td></tr>
+              <tr><td>Demande de cotation (RFQ)</td><td>Fournitures & services de valeur moyenne</td><td>Règle des trois devis</td></tr>
+              <tr><td>Appel d'offres</td><td>Marchés au-dessus du seuil réglementaire</td><td>DAO, publication & évaluation formelle</td></tr>
+              <tr><td>Canal CPA</td><td>Produits pharmaceutiques & intrants relevant de la Centrale Pharmaceutique d'Achat</td><td>Commande via la CPA (dérogation encadrée)</td></tr>
+            </tbody></table></div>
+            <p class="muted" style="font-size:12.5px;margin-top:10px">Repères indicatifs. Les seuils chiffrés applicables sont fixés par la réglementation nationale (ARMP) et le Manuel INSAPT. Se référer au chapitre 7 du manuel.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== MANUAL ===== -->
+      <section class="view" id="v-manual">
+        <div class="panel" style="padding:0">
+          <div class="panel-head"><h3 data-i18n="scm.tab.manual">Manuel des marchés</h3><div class="spacer"></div>
+            <button class="btn btn-ghost btn-sm no-print" onclick="window.print()">Imprimer</button></div>
+          <div class="manual-layout">
+            <nav class="manual-toc"><h4>Sommaire</h4><ol id="manualToc"><li class="muted" style="font-size:13px">Chargement…</li></ol></nav>
+            <div class="manual-body" id="manualBody"><p class="muted">Chargement du manuel…</p></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== BARCODES ===== -->
+      <section class="view" id="v-barcode">
+        <div class="hint">Chaque code est généré <b>en séquence</b> au format <code>INSAPT-AAAA-NNNNNN</code>. À la génération, l'article est ajouté au registre local et — si la synchronisation Google est configurée — poussé vers le Google Sheet de l'INSAPT.</div>
+        <div class="panel"><div class="panel-head"><h3>Générer des codes-barres</h3></div>
+          <div class="panel-body">
+            <div class="bc-controls">
+              <div class="field"><label>Quantité</label><input type="number" id="bcQty" min="1" max="200" value="10"></div>
+              <div class="field"><label>Catégorie par défaut</label>
+                <select id="bcCat">
+                  <option>Équipement de laboratoire</option><option>Matériel informatique</option>
+                  <option>Mobilier</option><option>Véhicule</option><option>Consommable</option>
+                  <option>Réactif</option><option>Équipement médical</option><option>Autre</option>
+                </select></div>
+              <div class="field"><label>Bailleur / source</label>
+                <select id="bcDonor"><option>Budget de l'État</option><option>OMS</option><option>UNICEF</option><option>Africa CDC</option><option>Banque Mondiale</option><option>Fonds Mondial</option><option>Partenaire technique</option><option>Autre</option></select></div>
+              <div class="field"><label>&nbsp;</label><button class="btn btn-gold" id="bcGen" style="width:100%">Générer la séquence</button></div>
+            </div>
+            <div class="actions-row">
+              <button class="btn btn-ghost btn-sm no-print" id="bcPrint">Imprimer les étiquettes</button>
+              <button class="btn btn-ghost btn-sm" id="bcClear">Effacer l'aperçu</button>
+              <span class="muted" style="font-size:12.5px;align-self:center">Prochain n° : <b id="bcNext">—</b></span>
+            </div>
+            <div class="bc-grid" id="bcGrid"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== STOCK ===== -->
+      <section class="view" id="v-stock">
+        <div class="hint">Interface de saisie rapide. Les articles générés par code-barres apparaissent ici automatiquement ; complétez les champs puis <b>enregistrez</b>. Export CSV disponible à tout moment.</div>
+        <div class="panel"><div class="panel-head"><h3>Enregistrer / mettre à jour un article</h3></div>
+          <div class="panel-body">
+            <div class="form-grid">
+              <div class="field"><label>Code-barres</label><input type="text" id="fCode" placeholder="INSAPT-2026-000001"></div>
+              <div class="field"><label>Désignation</label><input type="text" id="fName" placeholder="Ex. Centrifugeuse réfrigérée"></div>
+              <div class="field"><label>Catégorie</label>
+                <select id="fCat"><option>Équipement de laboratoire</option><option>Matériel informatique</option><option>Mobilier</option><option>Véhicule</option><option>Consommable</option><option>Réactif</option><option>Équipement médical</option><option>Autre</option></select></div>
+              <div class="field"><label>Bailleur / source</label>
+                <select id="fDonor"><option>Budget de l'État</option><option>OMS</option><option>UNICEF</option><option>Africa CDC</option><option>Banque Mondiale</option><option>Fonds Mondial</option><option>Partenaire technique</option><option>Autre</option></select></div>
+              <div class="field"><label>Quantité</label><input type="number" id="fQty" min="0" value="1"></div>
+              <div class="field"><label>Valeur unitaire (XAF)</label><input type="number" id="fValue" min="0" value="0"></div>
+              <div class="field"><label>Emplacement / pôle</label>
+                <select id="fLoc"><option>Direction Générale</option><option>CVS — Veille Sanitaire</option><option>LNSP — Laboratoire</option><option>CFRSP — Formation</option><option>Secrétariat Général</option><option>Magasin central</option></select></div>
+              <div class="field"><label>Date d'acquisition</label><input type="date" id="fDate"></div>
+              <div class="field"><label>État</label>
+                <select id="fState"><option>Neuf</option><option>Bon</option><option>Passable</option><option>À réformer</option></select></div>
+              <div class="field span2"><label>Observations</label><input type="text" id="fNote" placeholder="N° de série, garantie, remarques…"></div>
+            </div>
+            <div class="actions-row">
+              <button class="btn btn-primary btn-sm" id="stSave">Enregistrer l'article</button>
+              <button class="btn btn-ghost btn-sm" id="stReset">Vider le formulaire</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel"><div class="panel-head"><h3>Registre des stocks</h3><div class="spacer"></div>
+          <input type="search" id="stSearch" placeholder="Rechercher…" style="padding:8px 12px;border:1.5px solid var(--line);border-radius:8px;font:500 13px var(--ff-body)">
+          <button class="btn btn-ghost btn-sm" id="stExport">Exporter CSV</button>
+          <button class="btn btn-gold btn-sm" id="stSync">Sync Google Sheet</button>
+        </div>
+          <div class="panel-body"><div class="tbl-scroll"><table class="data" id="stockTbl"><thead></thead><tbody></tbody></table></div></div>
+        </div>
+      </section>
+
+      <!-- ===== REPORTS ===== -->
+      <section class="view" id="v-reports">
+        <div class="hint">Rapports intégrés basés sur des requêtes prédéfinies. Sélectionnez un rapport ; le résultat est exportable en CSV.</div>
+        <div class="panel"><div class="panel-head"><h3>Requêtes prédéfinies</h3></div>
+          <div class="panel-body">
+            <div class="form-grid">
+              <div class="field"><label>Rapport</label>
+                <select id="rpType">
+                  <option value="age">Âge des actifs (ancienneté)</option>
+                  <option value="donor">Actifs par bailleur / source</option>
+                  <option value="cat">Actifs par catégorie</option>
+                  <option value="loc">Actifs par emplacement / pôle</option>
+                  <option value="value">Valeur d'inventaire par pôle</option>
+                  <option value="state">Actifs à réformer / état</option>
+                </select></div>
+              <div class="field"><label>Filtre (optionnel)</label><input type="text" id="rpFilter" placeholder="Ex. OMS, LNSP, > 5 ans…"></div>
+              <div class="field"><label>&nbsp;</label><button class="btn btn-primary" id="rpRun" style="width:100%">Exécuter</button></div>
+            </div>
+            <div class="actions-row"><button class="btn btn-ghost btn-sm" id="rpExport">Exporter le résultat</button></div>
+          </div>
+        </div>
+        <div class="panel"><div class="panel-head"><h3 id="rpTitle">Résultat</h3></div>
+          <div class="panel-body"><div class="tbl-scroll"><table class="data" id="rpTbl"><thead></thead><tbody></tbody></table></div></div>
+        </div>
+      </section>
+
+      <!-- ===== DOCS & LINKS ===== -->
+      <section class="view" id="v-docs">
+        <div class="panel"><div class="panel-head"><h3>Cadre réglementaire</h3></div>
+          <div class="panel-body"><div class="link-list">
+            <a class="link-item" href="https://armp-tchad.com/" target="_blank" rel="noopener"><span class="ic ext">↗</span><span class="m"><b>ARMP — Codes des marchés publics</b><small>Autorité de Régulation des Marchés Publics du Tchad · armp-tchad.com</small></span></a>
+            <a class="link-item" href="#" id="lnkManual"><span class="ic">HTM</span><span class="m"><b>Manuel de Passation des Marchés (INSAPT)</b><small>Version intégrale en HTML — onglet dédié</small></span></a>
+          </div></div>
+        </div>
+        <div class="panel"><div class="panel-head"><h3>Textes de l'INSAPT</h3></div>
+          <div class="panel-body"><div class="link-list">
+            <a class="link-item" href="../documents/loi-11-2020.pdf"><span class="ic">PDF</span><span class="m"><b>Loi N°11/PR/2020 — Création de l'INSAPT</b><small>Texte de création</small></span></a>
+            <a class="link-item" href="../documents/decret-2624-2023.pdf"><span class="ic">PDF</span><span class="m"><b>Décret N°2624/PT/PM/MSPP/2023</b><small>Organisation & fonctionnement · 18 sept. 2023</small></span></a>
+            <a class="link-item" href="../documents/decret-0642-2025.pdf"><span class="ic">PDF</span><span class="m"><b>Décret N°0642/PR/PM/MSPP/2025</b><small>Nominations · 15 avril 2025</small></span></a>
+            <a class="link-item" href="../documents/plan-strategique-2026-2030.pdf"><span class="ic">PDF</span><span class="m"><b>Plan Stratégique 2026–2030</b><small>Document de référence</small></span></a>
+            <a class="link-item" href="../documents/manuel-passation-marches.pdf"><span class="ic">PDF</span><span class="m"><b>Manuel de Passation des Marchés (PDF)</b><small>Version imprimable</small></span></a>
+          </div></div>
+        </div>
+        <div class="panel"><div class="panel-head"><h3>Connexion Google (stockage en direct)</h3></div>
+          <div class="panel-body">
+            <div class="hint">Collez l'URL de votre <b>Google Apps Script</b> déployé (Web App) pour activer la synchronisation en direct vers Google Sheets & Drive. Voir <code>google-apps-script/README.md</code> dans le dépôt.</div>
+            <div class="form-grid">
+              <div class="field span2"><label>URL du Web App (…/exec)</label><input type="url" id="gsUrl" placeholder="https://script.google.com/macros/s/XXXX/exec"></div>
+              <div class="field"><label>Clé partagée</label><input type="text" id="gsKey" placeholder="INSAPT-SCM-KEY"></div>
+            </div>
+            <div class="actions-row">
+              <button class="btn btn-primary btn-sm" id="gsSave">Enregistrer & tester</button>
+              <button class="btn btn-ghost btn-sm" id="gsPull">Importer depuis Google Sheet</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="../assets/i18n.js"></script>
+<script src="scm.js"></script>
+</body>
+</html>
