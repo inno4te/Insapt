@@ -47,6 +47,9 @@
     renderAll();
     // re-apply language now that app DOM is visible
     if (window.INSAPT_LANG && window.setLang) window.setLang(window.INSAPT_LANG);
+    // deep-link e.g. ?goto=code
+    const goto = new URLSearchParams(location.search).get("goto");
+    if (goto && document.getElementById("v-" + goto)) switchView(goto);
   }
   function logout() {
     sessionStorage.removeItem(SESSION_KEY);
@@ -89,7 +92,7 @@
   });
 
   const VIEW_TITLE = {
-    dash: "scm.tab.dash", proc: "scm.tab.proc", manual: "scm.tab.manual",
+    dash: "scm.tab.dash", proc: "scm.tab.proc", manual: "scm.tab.manual", code: "scm.tab.code",
     barcode: "scm.tab.barcode", stock: "scm.tab.stock", reports: "scm.tab.reports", docs: "scm.tab.docs"
   };
   function switchView(v) {
@@ -100,6 +103,7 @@
     if (v === "dash") renderDash();
     if (v === "stock") renderStock();
     if (v === "manual") loadManual();
+    if (v === "code") initCode();
     if (v === "proc") renderProcFlow();
   }
 
@@ -332,6 +336,7 @@
   // ---------- Documents / Google config ----------
   function wireDocs() {
     $("#lnkManual").addEventListener("click", e => { e.preventDefault(); switchView("manual"); });
+    const lc = $("#lnkCode"); if (lc) lc.addEventListener("click", e => { e.preventDefault(); switchView("code"); });
     $("#gsSave").addEventListener("click", async () => {
       GS = { url: $("#gsUrl").value.trim(), key: $("#gsKey").value.trim() };
       save(GS_KEY, GS);
@@ -413,6 +418,142 @@
     } catch (e) {
       $("#manualBody").innerHTML = "<p class='muted'>Le manuel n'a pas pu être chargé. Vérifiez que <code>manual-body.html</code> est présent.</p>";
     }
+  }
+
+  // ---------- Code des Marchés Publics (searchable) ----------
+  let codeReady = false, codeActiveChip = "";
+  // live copy of articles: starts from bundled file, may be replaced by Google
+  let CODE_ARTICLES = (window.CODE_MP && window.CODE_MP.articles) ? window.CODE_MP.articles.slice() : [];
+
+  function initCode() {
+    if (codeReady) {
+      // still refresh from Google on re-entry if connected
+      if (GS.url) loadCodeFromGoogle();
+      return;
+    }
+    if (!CODE_ARTICLES.length && !GS.url) {
+      $("#codeResults").innerHTML = "<p class='muted'>Base du Code indisponible.</p>"; return;
+    }
+
+    // popular keyword chips
+    const chips = ["appel d'offres", "gré à gré", "avenant", "garantie", "seuil", "ARMP", "recours", "PPM", "délai de paiement", "corruption", "réception", "DSP"];
+    $("#codeChips").innerHTML = chips.map(c =>
+      `<button class="btn btn-ghost btn-sm" data-chip="${esc(c)}" style="padding:5px 11px;font-size:12px">${esc(c)}</button>`).join("");
+    $$("#codeChips [data-chip]").forEach(b => b.addEventListener("click", () => {
+      codeActiveChip = b.dataset.chip; $("#codeSearch").value = b.dataset.chip; runCodeSearch();
+    }));
+
+    $("#codeSearch").addEventListener("input", runCodeSearch);
+    $("#codeTitre").addEventListener("change", runCodeSearch);
+    const rb = $("#codeRefresh"); if (rb) rb.addEventListener("click", () => loadCodeFromGoogle(true));
+    const sb = $("#codeSeed"); if (sb) sb.addEventListener("click", seedCodeToGoogle);
+
+    codeReady = true;
+    rebuildTitreFilter();
+    runCodeSearch();
+    // if Google is configured, pull the live copy (overrides bundled)
+    if (GS.url) loadCodeFromGoogle();
+  }
+
+  function rebuildTitreFilter() {
+    const sel = $("#codeTitre");
+    const cur = sel.value;
+    const titres = [...new Set(CODE_ARTICLES.map(a => a.titre))];
+    sel.innerHTML = '<option value="">Tous les Titres</option>' +
+      titres.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join("");
+    if (cur) sel.value = cur;
+  }
+
+  // Load the Code from the Google Sheet (CodeMP tab). Falls back silently.
+  async function loadCodeFromGoogle(announce) {
+    if (!GS.url) { if (announce) toast("Configurez Google d'abord (Documents & liens)", "err"); return; }
+    try {
+      const r = await fetch(GS.url + "?action=code_list&key=" + encodeURIComponent(GS.key));
+      const j = await r.json();
+      if (j && j.ok && Array.isArray(j.articles) && j.articles.length) {
+        CODE_ARTICLES = j.articles;
+        rebuildTitreFilter();
+        runCodeSearch();
+        if (announce) toast(`${j.articles.length} article(s) chargé(s) depuis Google`, "ok");
+        markCodeSource("google", j.articles.length);
+      } else {
+        if (announce) toast("Sheet du Code vide — utilisez « Publier vers Google »", "warn");
+        markCodeSource("local", CODE_ARTICLES.length);
+      }
+    } catch (e) {
+      if (announce) toast("Échec du chargement depuis Google", "err");
+      markCodeSource("local", CODE_ARTICLES.length);
+    }
+  }
+
+  // One-time push of the bundled 69 articles into an empty CodeMP sheet.
+  async function seedCodeToGoogle() {
+    if (!GS.url) { toast("Configurez Google d'abord (Documents & liens)", "err"); switchView("docs"); return; }
+    const src = (window.CODE_MP && window.CODE_MP.articles) || [];
+    if (!src.length) { toast("Aucun article local à publier", "err"); return; }
+    try {
+      toast("Publication du Code vers Google…");
+      const r = await fetch(GS.url, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "code_seed", key: GS.key, articles: src })
+      });
+      const j = await r.json();
+      if (j && j.ok && j.count > 0) { toast(`${j.count} article(s) publié(s) dans Google`, "ok"); loadCodeFromGoogle(true); }
+      else if (j && j.ok && j.count === 0) toast("Le Sheet contient déjà des articles — rien à publier", "warn");
+      else toast("Réponse inattendue du serveur", "err");
+    } catch (e) { toast("Échec de la publication", "err"); }
+  }
+
+  function markCodeSource(kind, n) {
+    const el = $("#codeSource"); if (!el) return;
+    if (kind === "google") { el.textContent = `Source : Google Sheet · ${n} articles`; el.style.color = "var(--ok)"; }
+    else { el.textContent = `Source : fichier local · ${n} articles`; el.style.color = "var(--slate)"; }
+  }
+
+  function runCodeSearch() {
+    const meta = (window.CODE_MP && window.CODE_MP.meta) || { ref: "Décret N°2130/PR/2020", note: "" };
+    if (!CODE_ARTICLES.length) { $("#codeResults").innerHTML = "<p class='muted'>Base du Code indisponible.</p>"; return; }
+    const q = ($("#codeSearch").value || "").toLowerCase().trim();
+    const titre = $("#codeTitre").value;
+    const terms = q.split(/\s+/).filter(Boolean);
+
+    const scored = CODE_ARTICLES.map(a => {
+      if (titre && a.titre !== titre) return null;
+      const tags = a.tags || [];
+      if (!terms.length) return { a, score: 0 };
+      let score = 0, all = true;
+      terms.forEach(t => {
+        let hit = 0;
+        if (("article " + a.art).includes(t) || String(a.art) === t) hit += 5;
+        if (tags.some(tag => tag.toLowerCase().includes(t))) hit += 4;
+        if ((a.heading || "").toLowerCase().includes(t)) hit += 3;
+        if ((a.body || "").toLowerCase().includes(t)) hit += 1;
+        if (!hit) all = false; else score += hit;
+      });
+      return all ? { a, score } : null;
+    }).filter(Boolean).sort((x, y) => y.score - x.score);
+
+    $("#codeCount").innerHTML = `<b>${scored.length}</b> article(s) — ${esc(meta.ref)} · <span class="muted">${esc(meta.note)}</span>`;
+
+    const hi = s => terms.length ? terms.reduce((acc, t) =>
+      acc.replace(new RegExp("(" + t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "gi"), '<mark style="background:var(--gold-soft,#fff4c9);padding:0 2px;border-radius:3px">$1</mark>'), s) : s;
+
+    $("#codeResults").innerHTML = scored.length ? scored.map(({ a }) => `
+      <article class="panel" style="margin:0">
+        <div class="panel-body" style="padding:18px 20px">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+            <span class="badge ok" style="background:var(--navy-050);color:var(--navy-800)">Article ${esc(a.art)}</span>
+            <span class="muted" style="font-size:12px">${esc(a.titre)} · ${esc(a.chapitre)}</span>
+          </div>
+          <h3 style="font-size:16px;margin:2px 0 6px">${hi(esc(a.heading))}</h3>
+          <p style="margin:0 0 10px;font-size:14.5px;color:var(--ink)">${hi(esc(a.body))}</p>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${(a.tags || []).map(t => `<span style="font-size:11px;color:var(--slate);background:var(--wash);border:1px solid var(--line);padding:3px 8px;border-radius:20px">${esc(t)}</span>`).join("")}
+          </div>
+        </div>
+      </article>`).join("")
+      : `<div class="panel" style="margin:0"><div class="empty"><div class="big">§</div>Aucun article ne correspond à « ${esc(q)} ».</div></div>`;
   }
 
   // ---------- Helpers ----------

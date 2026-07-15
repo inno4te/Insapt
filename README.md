@@ -51,6 +51,7 @@ Accès depuis le bouton **« Chaîne d'approvisionnement »** ou `scm/index.html
 | **Tableau de bord** | KPI (articles, valeur, catégories, bailleurs), graphique par catégorie, derniers articles |
 | **Procédures** | Circuit de passation synthétique + repères de seuils/méthodes |
 | **Manuel des marchés** | Manuel complet **en HTML** (sommaire + 24 chapitres, tableaux) + impression |
+| **Code des Marchés Publics** | **Base consultable** du Décret N°2130/PR/2020 (texte officiel ARMP) : recherche par mot-clé / n° d'article / thème, filtre par Titre, surlignage des termes, puces de recherche rapide, lien vers le PDF officiel de l'ARMP. 69 articles couvrant les 7 Titres (dispositions générales & seuils, organes, passation, exécution, contrôle/résiliation, contentieux/sanctions, dispositions finales) |
 | **Codes-barres** | Génération **en séquence** `INSAPT-AAAA-NNNNNN`, aperçu imprimable, ajout auto au registre |
 | **Registre des stocks** | Saisie/mise à jour d'articles, recherche, **export CSV**, sync Google |
 | **Rapports** | Requêtes prédéfinies : âge des actifs, par bailleur, par catégorie, par emplacement, valeur par pôle, à réformer — exportables |

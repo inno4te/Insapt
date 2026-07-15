@@ -56,6 +56,7 @@
       <button data-view="dash" class="active"><span class="ic">▤</span><span data-i18n="scm.tab.dash">Tableau de bord</span></button>
       <button data-view="proc"><span class="ic">✔</span><span data-i18n="scm.tab.proc">Procédures</span></button>
       <button data-view="manual"><span class="ic">▦</span><span data-i18n="scm.tab.manual">Manuel des marchés</span></button>
+      <button data-view="code"><span class="ic">§</span><span data-i18n="scm.tab.code">Code des Marchés Publics</span></button>
       <button data-view="barcode"><span class="ic">▮</span><span data-i18n="scm.tab.barcode">Codes-barres</span></button>
       <button data-view="stock"><span class="ic">▣</span><span data-i18n="scm.tab.stock">Registre des stocks</span></button>
       <button data-view="reports"><span class="ic">◔</span><span data-i18n="scm.tab.reports">Rapports</span></button>
@@ -132,7 +133,35 @@
         </div>
       </section>
 
-      <!-- ===== BARCODES ===== -->
+      <!-- ===== CODE DES MARCHÉS PUBLICS (searchable) ===== -->
+      <section class="view" id="v-code">
+        <div class="hint">Base de données consultable du <b>Code des Marchés Publics du Tchad — Décret N°2130/PR/2020</b>. Tapez un mot-clé (ex. « avenant », « gré à gré », « ARMP », « garantie », « seuil », « préférence nationale ») ou un n° d'article. Texte fidèle au Code officiel publié par l'ARMP ; pour la version opposable, ouvrez le PDF officiel.</div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Rechercher dans le Code</h3><div class="spacer"></div>
+            <button class="btn btn-ghost btn-sm" id="codeRefresh" title="Recharger depuis Google Sheet">↻ Google</button>
+            <button class="btn btn-gold btn-sm" id="codeSeed" title="Publier les 69 articles vers un Sheet vide">Publier vers Google</button>
+            <a class="btn btn-ghost btn-sm" href="https://armp-tchad.com/_files/FILE_KRV1730981306.pdf" target="_blank" rel="noopener">Texte officiel (PDF) ↗</a>
+            <a class="btn btn-ghost btn-sm" href="https://armp-tchad.com/decrets" target="_blank" rel="noopener">ARMP ↗</a>
+          </div>
+          <div class="panel-body">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+              <input type="search" id="codeSearch" placeholder="Rechercher par mot-clé, n° d'article, thème…" style="flex:1;min-width:240px;padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;font:500 15px var(--ff-body);background:var(--wash)">
+              <select id="codeTitre" style="padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;font:500 14px var(--ff-body);background:var(--wash)">
+                <option value="">Tous les Titres</option>
+              </select>
+            </div>
+            <div id="codeChips" style="display:flex;gap:7px;flex-wrap:wrap;margin-top:12px"></div>
+            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:12px">
+              <div id="codeCount" class="muted" style="font-size:13px"></div>
+              <div id="codeSource" class="muted" style="font-size:12px"></div>
+            </div>
+          </div>
+        </div>
+        <div id="codeResults" style="display:grid;gap:12px"></div>
+      </section>
+
+
       <section class="view" id="v-barcode">
         <div class="hint">Chaque code est généré <b>en séquence</b> au format <code>INSAPT-AAAA-NNNNNN</code>. À la génération, l'article est ajouté au registre local et — si la synchronisation Google est configurée — poussé vers le Google Sheet de l'INSAPT.</div>
         <div class="panel"><div class="panel-head"><h3>Générer des codes-barres</h3></div>
@@ -225,6 +254,8 @@
       <section class="view" id="v-docs">
         <div class="panel"><div class="panel-head"><h3>Cadre réglementaire</h3></div>
           <div class="panel-body"><div class="link-list">
+            <a class="link-item" href="#" id="lnkCode"><span class="ic">§</span><span class="m"><b>Code des Marchés Publics — Décret N°2130/PR/2020</b><small>Base consultable par mot-clé — onglet dédié</small></span></a>
+            <a class="link-item" href="https://armp-tchad.com/_files/FILE_KRV1730981306.pdf" target="_blank" rel="noopener"><span class="ic ext">PDF</span><span class="m"><b>Code des Marchés Publics — texte officiel (PDF)</b><small>Version intégrale publiée par l'ARMP</small></span></a>
             <a class="link-item" href="https://armp-tchad.com/" target="_blank" rel="noopener"><span class="ic ext">↗</span><span class="m"><b>ARMP — Codes des marchés publics</b><small>Autorité de Régulation des Marchés Publics du Tchad · armp-tchad.com</small></span></a>
             <a class="link-item" href="#" id="lnkManual"><span class="ic">HTM</span><span class="m"><b>Manuel de Passation des Marchés (INSAPT)</b><small>Version intégrale en HTML — onglet dédié</small></span></a>
           </div></div>
@@ -262,6 +293,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="../assets/i18n.js"></script>
+<script src="code-mp-data.js"></script>
 <script src="scm.js"></script>
 </body>
 </html>

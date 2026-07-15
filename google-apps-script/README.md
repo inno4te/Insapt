@@ -23,14 +23,21 @@ Le portail fonctionne **sans** cette connexion (stockage local dans le navigateu
 
 ## Ce qui se synchronise
 
+**Registre des stocks (onglet « Stocks » du Sheet)**
 - **Génération de codes-barres** → chaque nouvel article est poussé vers le Sheet.
 - **Enregistrement / mise à jour d'un article** → mise à jour de la ligne correspondante (par `code`).
 - **Sync Google Sheet** (bouton du registre) → pousse tout le registre local.
 - **Importer depuis Google Sheet** → tire les lignes du Sheet vers le portail et réaligne la séquence des codes-barres.
 
-## Colonnes du Sheet
+**Code des Marchés Publics (onglet « CodeMP » du Sheet)**
+- **Publier vers Google** (onglet Code des Marchés Publics) → écrit les 69 articles fournis dans un onglet `CodeMP` **vide** (ne fait rien s'il contient déjà des données, pour ne pas écraser vos modifications).
+- **↻ Google** → recharge les articles depuis le Sheet ; le portail affiche alors « Source : Google Sheet ». Si le Sheet est vide ou hors ligne, il retombe sur le fichier local (`code-mp-data.js`).
+- Vous pouvez **éditer les articles directement dans Google Sheets** (colonnes `art, titre, chapitre, heading, body, tags, updated` ; les `tags` sont séparés par des barres verticales `|`). Les modifications apparaissent dans le portail après « ↻ Google ».
 
-`code, name, cat, donor, qty, value, loc, date, state, note, created, updated`
+## Colonnes des onglets
+
+- **Stocks** : `code, name, cat, donor, qty, value, loc, date, state, note, created, updated`
+- **CodeMP** : `art, titre, chapitre, heading, body, tags, updated` (tags séparés par `|`)
 
 ## Sécurité
 
