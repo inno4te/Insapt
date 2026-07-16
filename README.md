@@ -23,12 +23,19 @@ insapt-site/
 │   ├── manuel-passation-marches.pdf   (version imprimable)
 │   └── manuel-passation-marches.docx
 ├── scm/                       Portail Chaîne d'Approvisionnement (protégé)
-│   ├── index.html             Connexion + application (7 onglets)
+│   ├── index.html             Connexion + application (8 onglets)
 │   ├── scm.css
-│   ├── scm.js                 Auth, codes-barres, stocks, rapports, sync Google
-│   ├── manual-body.html       Manuel des marchés rendu en HTML (24 chapitres)
-│   └── manual-toc.html
-├── google-apps-script/        Backend Google Sheets (stockage en direct)
+│   ├── scm.js
+│   ├── manual-body.html       Manuel des marchés rendu en HTML
+│   ├── manual-toc.html
+│   └── code-mp-data.js        Code des Marchés Publics (69 articles)
+├── elearning/                 INSAPT Academy — plateforme e-learning
+│   ├── index.html             Connexion apprenant + application
+│   ├── elearning.css
+│   ├── elearning.js           Auth, cours, examens, certificats PDF, admin
+│   ├── courses-data.js        Catalogue 7 parcours + banque QCM (62 questions)
+│   └── manual-modules.js      24 chapitres du Manuel comme modules
+├── google-apps-script/        Backend Google Sheets (4 onglets)
 │   ├── Code.gs
 │   └── README.md
 └── .nojekyll                  (ne pas supprimer — requis pour GitHub Pages)
@@ -68,6 +75,23 @@ avec la clé partagée `INSAPT-SCM-KEY`. Au chargement, le voyant en haut du por
 > **Important** : la clé `SHARED_KEY` en tête de votre `Code.gs` déployé doit être exactement `INSAPT-SCM-KEY`. Si vous l'avez changée, corrigez-la dans le script **ou** mettez à jour le champ « Clé partagée » du portail (onglet Documents & liens).
 
 Pour (re)déployer ou modifier le stockage **en direct**, suivez `google-apps-script/README.md`.
+
+## INSAPT Academy (e-learning)
+
+Plateforme de formation et de certification en passation des marchés, accessible depuis le site public et depuis le portail SCM.
+
+- Accès : `elearning/index.html`. L'apprenant se connecte avec **son nom complet (tel qu'il doit apparaître sur ses certificats) et sa section**. La progression est synchronisée avec Google Sheets et se reprend depuis n'importe quel appareil.
+- **Accès administrateur** (lien « Accès administrateur » de la page de connexion) : `forteh` / `f0rteh` — liste des inscrits, certificats obtenus, export CSV, et paramètres des certificats (signataire, titre, seuil de réussite).
+- **7 parcours** :
+  1. **Cours Généraux** — 10 modules (principes, processus, COI, pré-sélection, éthique, DAO, évaluation, exécution, contrôle interne).
+  2. **Code des Marchés Publics** — 10 modules (Décret N°2130/PR/2020 par Titres).
+  3. **Procédures & SOPs INSAPT** — 10 modules opérationnels.
+  4. **Certification Niveau 1** — Chapitres 1-6 du Manuel · examen 30 QCM / 60 min.
+  5. **Certification Niveau 2** — Chapitres 7-13 du Manuel · examen 30 QCM / 60 min.
+  6. **Certification Niveau 3** — Chapitres 14-19 du Manuel · examen 30 QCM / 60 min.
+  7. **Certification Niveau 4 (Expert)** — 15 modules (Manuel complet + Code par Titres) · examen 40 QCM / 80 min. **Déverrouillé après validation des Niveaux 1-3.**
+- Chaque examen est **chronométré** ; un score **≥ 75 %** délivre un **certificat PDF** aux couleurs de l'INSAPT, signé du DG (nom modifiable en admin), avec ID unique. Une mention `© Innocent Forteh` en tout petit blanc figure au pied du certificat.
+- Contenu trilingue (interface FR / AR / EN). Les leçons issues du Manuel restent en français (langue du document officiel).
 
 ## Déploiement GitHub Pages (sans terminal)
 

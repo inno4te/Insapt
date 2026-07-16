@@ -34,10 +34,17 @@ Le portail fonctionne **sans** cette connexion (stockage local dans le navigateu
 - **↻ Google** → recharge les articles depuis le Sheet ; le portail affiche alors « Source : Google Sheet ». Si le Sheet est vide ou hors ligne, il retombe sur le fichier local (`code-mp-data.js`).
 - Vous pouvez **éditer les articles directement dans Google Sheets** (colonnes `art, titre, chapitre, heading, body, tags, updated` ; les `tags` sont séparés par des barres verticales `|`). Les modifications apparaissent dans le portail après « ↻ Google ».
 
+**INSAPT Academy (onglets « Learners » et « ELSettings »)**
+- À la connexion (Nom + Section), l'apprenant est enregistré sur `Learners` (id unique dérivé du nom). Sa progression (modules terminés, certificats, cours en cours) est sérialisée en JSON dans la colonne `progress` et mise à jour à chaque avancée.
+- Il peut alors reprendre sa formation depuis n'importe quel ordinateur ou téléphone : à la reconnexion, la progression est rechargée du Sheet.
+- **Console admin** (`forteh` / `f0rteh`) : liste des apprenants, certificats obtenus, export CSV, et paramètres des certificats (nom & titre du signataire, seuil de réussite) stockés dans l'onglet `ELSettings`.
+
 ## Colonnes des onglets
 
 - **Stocks** : `code, name, cat, donor, qty, value, loc, date, state, note, created, updated`
 - **CodeMP** : `art, titre, chapitre, heading, body, tags, updated` (tags séparés par `|`)
+- **Learners** : `id, name, section, progress, created, updated` (progress = JSON)
+- **ELSettings** : `key, value` (clés : `signer`, `signerTitle`, `pass`)
 
 ## Sécurité
 

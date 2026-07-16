@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>INSAPT Academy — Formation en Passation des Marchés</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Libre+Franklin:wght@700;800;900&family=Noto+Naskh+Arabic:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="elearning.css">
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div class="login-wrap" id="loginWrap">
+  <form class="login-card" id="loginForm" autocomplete="off">
+    <div class="flag-ribbon"><i></i><i></i><i></i></div>
+    <div class="login-top">
+      <span class="crest"><span>INSAPT</span></span>
+      <h1 data-el="login.title">INSAPT Academy — Passation des Marchés</h1>
+      <p data-el="login.sub">Plateforme de formation et de certification du personnel</p>
+    </div>
+    <div class="login-body">
+      <div class="err" id="loginErr"></div>
+      <div class="login-note" data-el="login.note">Entrez votre nom exactement tel qu'il doit figurer sur vos certificats. Votre progression est sauvegardée en ligne : vous pouvez continuer depuis n'importe quel ordinateur ou téléphone.</div>
+      <div class="field">
+        <label data-el="login.name">Nom complet (pour le certificat)</label>
+        <input type="text" id="lgName" required placeholder="Ex. Dr AMINA MAHAMAT OUSMANE">
+      </div>
+      <div class="field">
+        <label data-el="login.section">Section / Service</label>
+        <select id="lgSection">
+          <option>Direction Générale</option>
+          <option>Secrétariat Général</option>
+          <option>Service de Passation des Marchés / SCM</option>
+          <option>CVS — Centre de Veille Sanitaire</option>
+          <option>LNSP — Laboratoire National</option>
+          <option>CFRSP — Formation & Recherche</option>
+          <option>Direction des Études</option>
+          <option>Communication, Statistiques & Archives</option>
+          <option>Agence Comptable</option>
+          <option>Autre</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" type="submit" style="width:100%" data-el="login.go">Commencer / Continuer ma formation</button>
+    </div>
+    <div class="login-foot">
+      <span><a href="../index.html" data-el="login.back">← Site INSAPT</a> · <a href="../scm/index.html" data-el="login.scm">Portail SCM</a></span>
+      <span class="admin-link" id="adminLink" data-el="login.admin">Accès administrateur</span>
+      <div class="lang-mini" role="group">
+        <button type="button" data-lang="fr" aria-pressed="true">FR</button>
+        <button type="button" data-lang="ar" aria-pressed="false">ع</button>
+        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- ================= APP ================= -->
+<div class="app" id="app">
+  <div class="flag-ribbon"><i></i><i></i><i></i></div>
+  <div class="topbar">
+    <div class="in">
+      <span class="crest"><span>INSAPT</span></span>
+      <span><b data-el="app.brand">INSAPT Academy</b><small data-el="app.sub">Formation en Passation des Marchés</small></span>
+      <div class="spacer"></div>
+      <a class="tlink" href="../index.html" data-el="nav.site">Site INSAPT</a>
+      <a class="tlink" href="../scm/index.html" data-el="nav.scm">Portail SCM</a>
+      <a class="tlink" href="#" id="navDash" data-el="nav.courses">Mes cours</a>
+      <span class="who-chip" id="whoChip">—</span>
+      <div class="lang-mini">
+        <button data-lang="fr" aria-pressed="true">FR</button>
+        <button data-lang="ar" aria-pressed="false">ع</button>
+        <button data-lang="en" aria-pressed="false">EN</button>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn" data-el="nav.logout">Quitter</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Dashboard -->
+    <section id="v-dash">
+      <div class="hero-strip">
+        <h2 id="helloLine">Bienvenue</h2>
+        <p data-el="dash.p">Sept parcours pour bâtir vos compétences en passation des marchés — des principes généraux à la certification Expert Niveau 4. Chaque parcours se conclut par un examen QCM chronométré ; un score de 75 % délivre un certificat officiel signé du Directeur Général.</p>
+        <div class="progress-line"><i id="globalProg" style="width:0%"></i></div>
+        <p style="margin-top:8px;font-size:12.5px;color:#cdd9ee"><span id="globalProgTxt">0%</span> <span data-el="dash.overall">de l'ensemble du programme complété</span></p>
+      </div>
+      <div class="course-grid" id="courseGrid"></div>
+    </section>
+
+    <!-- Course view -->
+    <section id="v-course" style="display:none">
+      <p style="margin:0 0 14px"><a href="#" id="backDash">←</a> <b id="courseTitle"></b></p>
+      <div class="course-layout">
+        <nav class="mod-list">
+          <div class="head"><h3 data-el="course.modules">Modules</h3></div>
+          <div id="modButtons"></div>
+        </nav>
+        <div>
+          <div class="lesson" id="lessonBox">
+            <div class="lhead"><h2 id="lessonTitle"></h2><span class="pill" id="lessonPos"></span></div>
+            <div class="lbody" id="lessonBody"></div>
+            <div class="lfoot">
+              <button class="btn btn-ghost btn-sm" id="prevMod">←</button>
+              <button class="btn btn-primary btn-sm" id="doneMod" data-el="course.markdone">Marquer comme terminé →</button>
+              <span class="muted" style="font-size:12.5px" id="modHint"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Exam view -->
+    <section id="v-exam" style="display:none">
+      <div class="quiz-shell">
+        <div class="quiz-head">
+          <h2 id="examTitle">Examen</h2>
+          <span class="pill gold" id="examMeta"></span>
+          <div class="timer" id="examTimer">--:--</div>
+        </div>
+        <div class="quiz-body" id="examBody"></div>
+        <div class="quiz-foot">
+          <button class="btn btn-gold" id="examSubmit" data-el="exam.submit">Soumettre mes réponses</button>
+          <button class="btn btn-ghost btn-sm" id="examCancel" data-el="exam.cancel">Abandonner</button>
+          <span class="muted" style="font-size:12.5px" data-el="exam.note">Seuil de réussite : 75 %. Le temps écoulé soumet automatiquement.</span>
+        </div>
+      </div>
+      <div id="examResult"></div>
+    </section>
+
+    <!-- Admin view -->
+    <section id="v-admin" style="display:none">
+      <div class="admin-grid">
+        <div class="panel">
+          <div class="phead"><h3 data-el="admin.title">Console d'administration</h3>
+            <button class="btn btn-ghost btn-sm" id="admRefresh">↻ Actualiser</button>
+            <button class="btn btn-ghost btn-sm" id="admExport">Exporter CSV</button>
+            <button class="btn btn-ghost btn-sm" id="admExit" data-el="admin.exit">Quitter l'admin</button>
+          </div>
+          <div class="pbody">
+            <div class="tbl-scroll"><table class="data" id="admTbl"><thead></thead><tbody></tbody></table></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="phead"><h3 data-el="admin.settings">Paramètres des certificats</h3></div>
+          <div class="pbody">
+            <div class="field"><label data-el="admin.signer">Nom du signataire</label><input type="text" id="setSigner" value="Pr Ali Mahamat Moussa"></div>
+            <div class="field"><label data-el="admin.signerTitle">Titre du signataire</label><input type="text" id="setSignerTitle" value="Directeur Général, INSAPT"></div>
+            <div class="field"><label data-el="admin.passmark">Seuil de réussite (%)</label><input type="number" id="setPass" value="75" min="50" max="100"></div>
+            <button class="btn btn-primary btn-sm" id="setSave" data-el="admin.save">Enregistrer les paramètres</button>
+            <span class="muted" style="font-size:12px;display:block;margin-top:10px" data-el="admin.note">Les paramètres sont stockés dans Google Sheets et s'appliquent à tous les apprenants.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="../scm/code-mp-data.js"></script>
+<script src="manual-modules.js"></script>
+<script src="courses-data.js"></script>
+<script src="elearning.js"></script>
+</body>
+</html>

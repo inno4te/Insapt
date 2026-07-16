@@ -17,6 +17,9 @@
       "nav.news": "Actualités",
       "nav.contact": "Contact",
       "nav.scm": "Chaîne d'approvisionnement",
+      "nav.academy": "Academy",
+      "foot.academy": "INSAPT Academy — Formation",
+      "scm.academy": "🎓 INSAPT Academy",
 
       "hero.eyebrow": "Établissement public à caractère scientifique",
       "hero.title1": "Protéger la santé des populations par la ",
@@ -183,6 +186,9 @@
       "nav.news": "News",
       "nav.contact": "Contact",
       "nav.scm": "Supply Chain",
+      "nav.academy": "Academy",
+      "foot.academy": "INSAPT Academy — Training",
+      "scm.academy": "🎓 INSAPT Academy",
 
       "hero.eyebrow": "Scientific public establishment",
       "hero.title1": "Protecting population health through ",
@@ -348,6 +354,9 @@
       "nav.news": "الأخبار",
       "nav.contact": "اتصل بنا",
       "nav.scm": "سلسلة الإمداد",
+      "nav.academy": "الأكاديمية",
+      "foot.academy": "أكاديمية المعهد — التدريب",
+      "scm.academy": "🎓 أكاديمية المعهد",
 
       "hero.eyebrow": "مؤسسة عامة ذات طابع علمي",
       "hero.title1": "حماية صحة السكان من خلال ",
