@@ -6,6 +6,8 @@
  *   • CodeMP     — Code des Marchés Publics (Décret N°2130/PR/2020)
  *   • Learners   — INSAPT Academy learners & progress
  *   • ELSettings — Academy settings (signer, pass mark)
+ *   • LabStock   — LaBiEp stock lots (réactifs, consommables, équipements)
+ *   • LabMoves   — journal des mouvements (entrées, sorties, rebuts)
  *
  * Deploy as a Web App (Execute as: Me, Access: Anyone) and paste
  * the /exec URL into the SCM portal (Documents & liens).
@@ -28,6 +30,14 @@
  *   GET  ?action=el_settings&key=...          -> {ok, settings}
  *   GET  ?action=el_admin_list&key=...&admin=user:pass -> {ok, learners:[...]}
  *   POST {action:"el_settings_set", key, admin, settings} -> {ok}
+ *
+ * LAB STOCK endpoints (LaBiEp — réactifs & consommables)
+ *   GET  ?action=ls_list&key=...              -> {ok:true, records:[...]}
+ *   POST {action:"ls_seed",   key, records}   -> {ok:true, count}   (remplace tout)
+ *   POST {action:"ls_upsert", key, record}    -> {ok:true, id}
+ *   POST {action:"ls_delete", key, id}        -> {ok:true}
+ *   GET  ?action=ls_moves&key=...             -> {ok:true, moves:[...]}
+ *   POST {action:"ls_move",   key, move}      -> {ok:true}
  * ------------------------------------------------------------
  */
 
@@ -58,6 +68,8 @@ function doGet(e) {
   if (p.action === 'list')          return json({ ok:true, records:listRecords() });
   if (p.action === 'code_list')     return json({ ok:true, articles:listArticles() });
   if (p.action === 'el_settings')   return json({ ok:true, settings:readSettings() });
+  if (p.action === 'ls_list')       return json({ ok:true, records:lsList() });
+  if (p.action === 'ls_moves')      return json({ ok:true, moves:lsMoves() });
   if (p.action === 'el_admin_list') {
     if (!isAdmin(p.admin)) return json({ ok:false, error:'admin auth' });
     return json({ ok:true, learners:listLearners() });
@@ -79,6 +91,11 @@ function doPost(e) {
   if (body.action === 'code_seed'   && body.articles){ return json({ ok:true, count:seedArticles(body.articles) }); }
 
   // Academy
+  if (body.action === 'ls_seed'   && body.records) { return json({ ok:true, count:lsSeed(body.records) }); }
+  if (body.action === 'ls_upsert' && body.record)  { lsUpsert(body.record); return json({ ok:true, id:body.record.id }); }
+  if (body.action === 'ls_delete' && body.id)      { lsDelete(body.id); return json({ ok:true }); }
+  if (body.action === 'ls_move'   && body.move)    { lsMove(body.move); return json({ ok:true }); }
+
   if (body.action === 'el_login')      return json(elLogin(body.name, body.section));
   if (body.action === 'el_save')       return json(elSave(body));
   if (body.action === 'el_settings_set') {
@@ -270,6 +287,142 @@ function writeSettings(s) {
   });
 }
 
+
+/* ==================== LAB STOCK (LaBiEp) ====================
+   Feuille LabStock : un lot par ligne.
+   Feuille LabMoves : journal des mouvements (append-only).
+   Conforme SOP R-3 §4.1 — champs de traçabilité obligatoires.
+============================================================ */
+
+var LS_COLS = ['id','name','category','subcategory','manufacturer','catalog_ref','lot','serial',
+               'qty_received','qty_remaining','unit','date_reception','date_manufacture','date_expiry',
+               'expiry_flag','location','temperature','last_update','notes','source','status','min_level'];
+
+var LS_MOVE_COLS = ['ts','kind','id','name','lot','qty','loc','who','note'];
+
+function getLabSheet() {
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName('LabStock');
+  if (!sh) {
+    sh = ss.insertSheet('LabStock');
+    sh.appendRow(LS_COLS);
+    sh.getRange(1,1,1,LS_COLS.length).setFontWeight('bold').setBackground('#eef3fb');
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+function getLabMoveSheet() {
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName('LabMoves');
+  if (!sh) {
+    sh = ss.insertSheet('LabMoves');
+    sh.appendRow(LS_MOVE_COLS);
+    sh.getRange(1,1,1,LS_MOVE_COLS.length).setFontWeight('bold').setBackground('#eef3fb');
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+/* Dates arrive as 'YYYY-MM-DD' strings; keep them as text so no locale drift. */
+function lsCell(v) {
+  if (v === null || v === undefined) return '';
+  if (v instanceof Date) return Utilities.formatDate(v, 'UTC', 'yyyy-MM-dd');
+  return v;
+}
+
+function lsList() {
+  var sh = getLabSheet();
+  var vals = sh.getDataRange().getValues();
+  if (vals.length < 2) return [];
+  var hdr = vals[0].map(function(h){ return String(h).trim(); });
+  var out = [];
+  for (var i = 1; i < vals.length; i++) {
+    if (!vals[i][0] && !vals[i][1]) continue;
+    var o = {};
+    for (var c = 0; c < hdr.length; c++) o[hdr[c]] = lsCell(vals[i][c]);
+    ['qty_received','qty_remaining','min_level'].forEach(function(k){
+      o[k] = (o[k] === '' || o[k] === null) ? null : Number(o[k]);
+    });
+    out.push(o);
+  }
+  return out;
+}
+
+/* Full replace — used by "Publier vers Google". Chunked for large batches. */
+function lsSeed(records) {
+  var sh = getLabSheet();
+  sh.clear();
+  sh.appendRow(LS_COLS);
+  sh.getRange(1,1,1,LS_COLS.length).setFontWeight('bold').setBackground('#eef3fb');
+  sh.setFrozenRows(1);
+  if (!records || !records.length) return 0;
+  var rows = records.map(function(r){
+    return LS_COLS.map(function(c){
+      var v = r[c];
+      return (v === null || v === undefined) ? '' : v;
+    });
+  });
+  var CHUNK = 500;
+  for (var i = 0; i < rows.length; i += CHUNK) {
+    var slice = rows.slice(i, i + CHUNK);
+    sh.getRange(sh.getLastRow() + 1, 1, slice.length, LS_COLS.length).setValues(slice);
+  }
+  // keep date columns as plain text to avoid locale reformatting
+  var n = sh.getLastRow() - 1;
+  if (n > 0) {
+    [12,13,14,18].forEach(function(col){
+      sh.getRange(2, col, n, 1).setNumberFormat('@');
+    });
+  }
+  return rows.length;
+}
+
+function lsUpsert(rec) {
+  var sh = getLabSheet();
+  var vals = sh.getDataRange().getValues();
+  var rowIdx = -1;
+  for (var i = 1; i < vals.length; i++) {
+    if (String(vals[i][0]) === String(rec.id)) { rowIdx = i + 1; break; }
+  }
+  var row = LS_COLS.map(function(c){
+    var v = rec[c];
+    return (v === null || v === undefined) ? '' : v;
+  });
+  if (rowIdx > 0) sh.getRange(rowIdx, 1, 1, LS_COLS.length).setValues([row]);
+  else sh.appendRow(row);
+}
+
+function lsDelete(id) {
+  var sh = getLabSheet();
+  var vals = sh.getDataRange().getValues();
+  for (var i = vals.length - 1; i >= 1; i--) {
+    if (String(vals[i][0]) === String(id)) sh.deleteRow(i + 1);
+  }
+}
+
+function lsMove(m) {
+  var sh = getLabMoveSheet();
+  sh.appendRow(LS_MOVE_COLS.map(function(c){
+    var v = m[c];
+    return (v === null || v === undefined) ? '' : v;
+  }));
+}
+
+function lsMoves() {
+  var sh = getLabMoveSheet();
+  var vals = sh.getDataRange().getValues();
+  if (vals.length < 2) return [];
+  var hdr = vals[0].map(function(h){ return String(h).trim(); });
+  var out = [];
+  for (var i = 1; i < vals.length; i++) {
+    var o = {};
+    for (var c = 0; c < hdr.length; c++) o[hdr[c]] = lsCell(vals[i][c]);
+    out.push(o);
+  }
+  return out.reverse();
+}
+
 /* ==================== UTIL ==================== */
 
 function json(obj) {
@@ -278,6 +431,6 @@ function json(obj) {
 
 /* Run once from the editor to create all tabs and grant scopes. */
 function setup() {
-  getSheet(); getCodeSheet(); getELSheet(); getELSetSheet();
+  getSheet(); getCodeSheet(); getELSheet(); getELSetSheet(); getLabSheet(); getLabMoveSheet();
   Logger.log('Spreadsheet ready: ' + getSpreadsheet().getUrl());
 }

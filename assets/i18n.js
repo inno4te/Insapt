@@ -17,6 +17,7 @@
       "nav.news": "Actualités",
       "nav.contact": "Contact",
       "nav.scm": "Chaîne d'approvisionnement",
+      "nav.labstock": "Lab Stock — LaBiEp",
       "nav.academy": "Academy",
       "foot.academy": "INSAPT Academy — Formation",
       "scm.academy": "🎓 INSAPT Academy",
@@ -148,6 +149,7 @@
       "foot.contact": "Contact",
       "foot.armp": "ARMP — Codes des marchés publics",
       "foot.portal": "Portail SCM (agents)",
+      "foot.labstock": "Lab Stock — Stocks LaBiEp (agents)",
       "foot.rights": "Tous droits réservés.",
       "foot.builtFor": "République du Tchad · Unité — Travail — Progrès",
 
@@ -186,6 +188,7 @@
       "nav.news": "News",
       "nav.contact": "Contact",
       "nav.scm": "Supply Chain",
+      "nav.labstock": "Lab Stock — LaBiEp",
       "nav.academy": "Academy",
       "foot.academy": "INSAPT Academy — Training",
       "scm.academy": "🎓 INSAPT Academy",
@@ -317,6 +320,7 @@
       "foot.contact": "Contact",
       "foot.armp": "ARMP — Public procurement codes",
       "foot.portal": "SCM portal (staff)",
+      "foot.labstock": "Lab Stock — LaBiEp inventory (staff)",
       "foot.rights": "All rights reserved.",
       "foot.builtFor": "Republic of Chad · Unity — Work — Progress",
 
@@ -354,6 +358,7 @@
       "nav.news": "الأخبار",
       "nav.contact": "اتصل بنا",
       "nav.scm": "سلسلة الإمداد",
+      "nav.labstock": "مخزون المختبر",
       "nav.academy": "الأكاديمية",
       "foot.academy": "أكاديمية المعهد — التدريب",
       "scm.academy": "🎓 أكاديمية المعهد",
@@ -485,6 +490,7 @@
       "foot.contact": "اتصل",
       "foot.armp": "الهيئة — مدونة الصفقات العمومية",
       "foot.portal": "بوابة سلسلة الإمداد (الموظفون)",
+      "foot.labstock": "مخزون المختبر — وحدة LaBiEp (الموظفون)",
       "foot.rights": "جميع الحقوق محفوظة.",
       "foot.builtFor": "جمهورية تشاد · وحدة — عمل — تقدم",
 

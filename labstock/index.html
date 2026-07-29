@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lab Stock — LaBiEp | INSAPT</title>
+<meta name="description" content="Gestion des stocks de réactifs et consommables du Laboratoire de Biologie et d'Épidémiologie (LaBiEp) — INSAPT. Principe PPSO/FEFO, alertes de péremption, rapports réglementaires.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="labstock.css">
+</head>
+<body>
+
+<!-- ══════════════ LOGIN ══════════════ -->
+<div class="login-wrap" id="login">
+  <div class="login-card">
+    <div class="login-flag"><i></i><i></i><i></i></div>
+    <div class="login-body">
+      <div class="login-icon">🧪</div>
+      <h1>Lab Stock — LaBiEp</h1>
+      <p class="sub">Gestion des stocks de réactifs et consommables<br>
+        Laboratoire de Biologie et d'Épidémiologie — INSAPT</p>
+      <div class="login-err" id="loginErr">Identifiant ou mot de passe incorrect. Réessayez.</div>
+      <form id="loginForm">
+        <div class="field">
+          <label for="lu">Identifiant</label>
+          <input id="lu" type="text" autocomplete="username" required autocapitalize="none" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="lp">Mot de passe</label>
+          <input id="lp" type="password" autocomplete="current-password" required>
+        </div>
+        <button class="btn btn-block" type="submit" style="margin-top:6px">Ouvrir la plateforme</button>
+      </form>
+    </div>
+    <div class="login-foot">
+      Accès réservé au Gestionnaire de Stock du LaBiEp<br>
+      Conforme SOP R-2 / R-3 — Manuel de Passation des Marchés INSAPT
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ APPLICATION ══════════════ -->
+<div class="app" id="app">
+
+  <!-- ─────── SIDEBAR ─────── -->
+  <aside class="side">
+    <div class="side-head">
+      <div class="brand">
+        <span class="dot">🧪</span>
+        <div><h2>Lab Stock</h2><small>LaBiEp — INSAPT</small></div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-lbl">Suivi</div>
+      <a data-v="dash" class="on"><span class="ic">📊</span>Tableau de bord<span class="badge" id="navBadgeDash" style="display:none">0</span></a>
+      <a data-v="inv"><span class="ic">📋</span>Inventaire</a>
+      <div class="nav-lbl">Opérations</div>
+      <a data-v="out"><span class="ic">📤</span>Sortie de stock<span class="badge" id="navBadgeOut" style="display:none">0</span></a>
+      <a data-v="recv"><span class="ic">📥</span>Réception</a>
+      <div class="nav-lbl">Pilotage</div>
+      <a data-v="rep"><span class="ic">📄</span>Rapports</a>
+      <a data-v="ana"><span class="ic">🔎</span>Analyse</a>
+      <a data-v="cfg"><span class="ic">⚙️</span>Paramètres</a>
+    </nav>
+    <div class="side-foot">
+      <a href="../scm/index.html">← Portail SCM</a>
+      <a href="../elearning/index.html">🎓 INSAPT Academy</a>
+      <a href="../index.html">🏠 Site INSAPT</a>
+    </div>
+  </aside>
+
+  <!-- ─────── MAIN ─────── -->
+  <div class="main">
+    <div class="topbar">
+      <h1 id="pgTitle">Tableau de bord<small>Vue d'ensemble des stocks et alertes de péremption</small></h1>
+      <span style="font-size:12px;color:var(--slate);white-space:nowrap">
+        <span class="sync-dot" id="syncDot"></span><span id="syncTxt">Stockage local</span>
+      </span>
+      <button class="btn btn-ghost btn-sm" id="btnLogout">Quitter</button>
+    </div>
+
+    <div class="wrap">
+
+      <!-- ══════ DASHBOARD ══════ -->
+      <section class="view on" id="v-dash">
+        <div class="kpis" id="kpis"></div>
+
+        <div class="card">
+          <div class="card-h">
+            <h3>Lots périmés<small>À mettre en quarantaine — Certificat de Destruction R-3.B requis</small></h3>
+            <span class="pill exp" id="nExp">0</span>
+          </div>
+          <div class="card-b flush" id="alertExp"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-h">
+            <h3>Péremption imminente<small>Alerte prioritaire à 30 jours — SOP R-3 §4.5</small></h3>
+            <span class="pill d30" id="nSoon">0</span>
+          </div>
+          <div class="card-b flush" id="alertSoon"></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px">
+          <div class="card"><div class="card-h"><h3>Répartition par état de péremption</h3></div>
+            <div class="card-b" id="byBand"></div></div>
+          <div class="card"><div class="card-h"><h3>Répartition par catégorie</h3></div>
+            <div class="card-b" id="byCat"></div></div>
+          <div class="card"><div class="card-h"><h3>Principaux emplacements</h3></div>
+            <div class="card-b" id="byLoc"></div></div>
+        </div>
+      </section>
+
+      <!-- ══════ INVENTAIRE ══════ -->
+      <section class="view" id="v-inv">
+        <div class="card">
+          <div class="card-h">
+            <h3>Recherche et filtres</h3>
+            <button class="btn btn-ghost btn-sm" id="fClear">Réinitialiser</button>
+            <button class="btn btn-ghost btn-sm" id="btnExportInv">Exporter CSV</button>
+            <button class="btn btn-sm" id="btnAdd">+ Ajouter un lot</button>
+          </div>
+          <div class="card-b">
+            <div class="filters">
+              <div class="field grow">
+                <label for="fQ">Recherche libre</label>
+                <input id="fQ" type="search" placeholder="Désignation, fabricant, lot, référence, emplacement…">
+              </div>
+              <div class="field"><label for="fCat">Catégorie</label><select id="fCat"></select></div>
+              <div class="field"><label for="fLoc">Emplacement</label><select id="fLoc"></select></div>
+              <div class="field"><label for="fTemp">Température</label><select id="fTemp"></select></div>
+              <div class="field"><label for="fBand">État péremption</label>
+                <select id="fBand">
+                  <option value="">Tous états</option>
+                  <option value="exp">Périmés</option>
+                  <option value="d30">≤ 30 jours</option>
+                  <option value="d90">≤ 90 jours</option>
+                  <option value="d365">≤ 12 mois</option>
+                  <option value="ok">Conformes</option>
+                  <option value="nodate">Date absente</option>
+                  <option value="na">Non périssables</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="count-note" id="invCount"></div>
+        </div>
+        <div class="card"><div class="card-b flush" id="invBody"></div></div>
+      </section>
+
+      <!-- ══════ SORTIE FEFO ══════ -->
+      <section class="view" id="v-out">
+        <div class="note">
+          <b>Séquence PPSO / FEFO — Premier Périmé, Sorti en Premier</b>
+          Tout prélèvement utilise le lot à péremption la plus proche disponible, sauf incompatibilité technique documentée.
+          Le système classe automatiquement les lots par date de péremption croissante et indique leur emplacement physique.
+          Toute dérogation doit être justifiée (SOP R-3 §4.3).
+        </div>
+        <div class="card">
+          <div class="card-h"><h3>Rechercher l'article à prélever</h3></div>
+          <div class="card-b">
+            <div class="field" style="margin:0">
+              <label for="oQ">Désignation, fabricant ou référence</label>
+              <input id="oQ" type="search" placeholder="Ex. : filter tips, primer, gants, Illumina…">
+            </div>
+          </div>
+        </div>
+        <div id="oResults"></div>
+      </section>
+
+      <!-- ══════ RÉCEPTION ══════ -->
+      <section class="view" id="v-recv">
+        <div class="note">
+          <b>Réception et mise en stock — SOP R-2 / R-3 §4.2</b>
+          L'enregistrement est effectué le jour même de la réception validée par PVIR. Chaque lot est étiqueté avec :
+          date de réception, numéro de lot, date de péremption et emplacement. Tout lot dont la péremption restante est
+          inférieure à 12 mois nécessite une décision écrite du Directeur du LNSP.
+        </div>
+        <form id="recvForm">
+          <div class="card">
+            <div class="card-h"><h3>Identification de l'article</h3></div>
+            <div class="card-b">
+              <div class="field"><label for="rName">Désignation complète *</label>
+                <input id="rName" required placeholder="Nom du réactif, kit ou consommable"></div>
+              <div class="grid3">
+                <div class="field"><label for="rCatSel">Catégorie</label>
+                  <select id="rCatSel">
+                    <option>Réactif PCR</option><option>Consommable</option>
+                    <option>Séquençage (Illumina)</option><option>Labo mobile</option>
+                    <option>Équipement</option><option>Contrôle / Calibrateur</option>
+                  </select></div>
+                <div class="field"><label for="rSub">Sous-catégorie / cible</label>
+                  <input id="rSub" placeholder="Ex. : Dengue, MPXV, PPE"></div>
+                <div class="field"><label for="rMan">Fabricant</label><input id="rMan"></div>
+              </div>
+              <div class="grid3">
+                <div class="field"><label for="rRef">Référence catalogue</label><input id="rRef"></div>
+                <div class="field"><label for="rLot">Numéro de lot *</label>
+                  <input id="rLot" placeholder="Identifiant unique fabricant"></div>
+                <div class="field"><label for="rSource">Source / financement</label>
+                  <select id="rSource">
+                    <option>Achat direct INSAPT</option>
+                    <option>Marché public (CPM)</option>
+                    <option>Don — OMS</option>
+                    <option>Don — Fonds Mondial</option>
+                    <option>Don — UNICEF</option>
+                    <option>Don — Bundeswehr / Labo mobile</option>
+                    <option>Don — autre partenaire</option>
+                    <option>Transfert interne</option>
+                    <option>Réception directe</option>
+                  </select></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-h"><h3>Quantité, dates et conservation</h3></div>
+            <div class="card-b">
+              <div class="grid3">
+                <div class="field"><label for="rQty">Quantité reçue *</label>
+                  <input id="rQty" type="number" min="0" step="any" required></div>
+                <div class="field"><label for="rUnit">Unité</label>
+                  <input id="rUnit" placeholder="vial, boîte, pack, unité" value="unité"></div>
+                <div class="field"><label for="rDate">Date de réception *</label>
+                  <input id="rDate" type="date" required></div>
+              </div>
+              <div class="grid3">
+                <div class="field"><label for="rExpiry">Date de péremption</label>
+                  <input id="rExpiry" type="date"></div>
+                <div class="field"><label for="rTemp">Température de conservation</label>
+                  <select id="rTemp">
+                    <option>Ambiante (RT)</option><option>+2 à +8 °C</option>
+                    <option>-20 °C</option><option>-80 °C</option><option>Non spécifiée</option>
+                  </select></div>
+                <div class="field"><label for="rLocSel">Emplacement</label><select id="rLocSel"></select></div>
+              </div>
+              <div class="field"><label for="rLocNew">Nouvel emplacement (si absent de la liste)</label>
+                <input id="rLocNew" placeholder="Ex. : Congélateur -80 °C n°2"></div>
+              <div class="note" id="rCheck" style="display:none"></div>
+              <div class="field" style="display:flex;align-items:center;gap:9px">
+                <input id="rApproved" type="checkbox" style="width:auto;margin:0">
+                <label for="rApproved" style="margin:0;font-weight:500">
+                  Décision du Directeur du LNSP obtenue et consignée (requis si péremption &lt; 12 mois)
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-h"><h3>Contrôle de réception</h3></div>
+            <div class="card-b">
+              <div class="grid2">
+                <div class="field"><label for="rWho">Agent réceptionnaire</label>
+                  <input id="rWho" placeholder="Nom et fonction"></div>
+                <div class="field"><label for="rNote">Observations / n° PVIR</label>
+                  <input id="rNote" placeholder="Référence PVIR, état chaîne du froid, réserves"></div>
+              </div>
+              <button class="btn" type="submit">Enregistrer la réception</button>
+            </div>
+          </div>
+        </form>
+      </section>
+
+      <!-- ══════ RAPPORTS ══════ -->
+      <section class="view" id="v-rep">
+        <div class="note">
+          <b>Rapports réglementaires</b>
+          Tous les rapports sont exportables en CSV (séparateur point-virgule, encodage UTF-8 avec BOM) pour ouverture
+          directe dans Excel ou transfert vers un autre système. Les rapports de péremption alimentent le
+          Rapport Mensuel Consommation vs. Péremption (formulaire R-3.C).
+        </div>
+        <div id="repList"></div>
+      </section>
+
+      <!-- ══════ ANALYSE ══════ -->
+      <section class="view" id="v-ana">
+        <div class="tabs" id="anaTab" data-t="dup">
+          <button data-t="dup" class="on">Doublons et dispersion</button>
+          <button data-t="order">Niveaux de commande</button>
+          <button data-t="qual">Qualité des données</button>
+        </div>
+        <div id="anaBody"></div>
+      </section>
+
+      <!-- ══════ PARAMÈTRES ══════ -->
+      <section class="view" id="v-cfg">
+        <div class="card">
+          <div class="card-h"><h3>État de la base<small id="cfgStats"></small></h3></div>
+        </div>
+        <form id="cfgForm">
+          <div class="card">
+            <div class="card-h"><h3>Seuils d'alerte de péremption<small>Valeurs par défaut issues de la SOP R-3</small></h3></div>
+            <div class="card-b">
+              <div class="grid3">
+                <div class="field"><label for="c_critDays">Alerte critique (jours)</label>
+                  <input id="c_critDays" type="number" min="1"><small style="font-size:11px;color:var(--slate)">SOP R-3 §4.5 — défaut 30</small></div>
+                <div class="field"><label for="c_warnDays">Alerte double étiquetage (jours)</label>
+                  <input id="c_warnDays" type="number" min="1"><small style="font-size:11px;color:var(--slate)">SOP R-3 §4.3 — défaut 90</small></div>
+                <div class="field"><label for="c_watchDays">Suivi rapproché (jours)</label>
+                  <input id="c_watchDays" type="number" min="1"><small style="font-size:11px;color:var(--slate)">SOP R-3 §4.2 — défaut 365</small></div>
+              </div>
+              <div class="grid2">
+                <div class="field"><label for="c_lossTarget">Cible taux de péremption (%)</label>
+                  <input id="c_lossTarget" type="number" min="0" step="0.1"></div>
+                <div class="field"><label for="c_varTarget">Cible écart d'inventaire (%)</label>
+                  <input id="c_varTarget" type="number" min="0" step="0.1"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><h3>Paramètres de réapprovisionnement<small>Utilisés pour le calcul du point de commande</small></h3></div>
+            <div class="card-b">
+              <div class="grid2">
+                <div class="field"><label for="c_leadTime">Délai d'approvisionnement (jours)</label>
+                  <input id="c_leadTime" type="number" min="1"></div>
+                <div class="field"><label for="c_coverage">Stock de sécurité (jours de couverture)</label>
+                  <input id="c_coverage" type="number" min="0"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><h3>Synchronisation Google Sheets<small>Sauvegarde partagée et accès multi-poste</small></h3></div>
+            <div class="card-b">
+              <div class="field"><label for="c_gsUrl">URL de l'application web Apps Script</label>
+                <input id="c_gsUrl" placeholder="https://script.google.com/macros/s/…/exec"></div>
+              <div class="field"><label for="c_gsKey">Clé partagée</label><input id="c_gsKey"></div>
+              <button class="btn" type="submit">Enregistrer les paramètres</button>
+            </div>
+          </div>
+        </form>
+        <div class="card">
+          <div class="card-h"><h3>Actions de synchronisation</h3></div>
+          <div class="card-b">
+            <div class="note" id="cfgSyncMsg" style="display:none"></div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-ghost" id="btnTest">Tester la connexion</button>
+              <button class="btn" id="btnPush">Publier vers Google</button>
+              <button class="btn btn-ghost" id="btnPull">Recharger depuis Google</button>
+            </div>
+            <p style="font-size:12.5px;color:var(--slate);margin:14px 0 0">
+              <b>Publier</b> écrase la feuille LabStock avec la base locale. <b>Recharger</b> remplace la base locale
+              par le contenu de la feuille. Effectuez une sauvegarde avant toute opération.
+            </p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h3>Sauvegarde et restauration</h3></div>
+          <div class="card-b">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+              <button class="btn btn-ghost" id="btnBackup">Télécharger une sauvegarde JSON</button>
+              <label class="btn btn-ghost" style="margin:0">
+                Restaurer une sauvegarde
+                <input type="file" id="fileRestore" accept=".json" style="display:none">
+              </label>
+              <button class="btn btn-danger" id="btnReset">Réinitialiser aux fichiers sources</button>
+            </div>
+            <p style="font-size:12.5px;color:var(--slate);margin:14px 0 0">
+              La sauvegarde contient la base, le journal des mouvements et les paramètres. La réinitialisation
+              restaure les 787 lots importés des registres LaBiEp d'origine et efface les mouvements.
+            </p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ MODAL : AJOUT / MODIFICATION ══════════════ -->
+<div class="modal" id="mEdit">
+  <div class="modal-box wide">
+    <div class="modal-h"><h3 id="mTitle">Ajouter un lot</h3>
+      <button class="modal-x" data-close type="button" aria-label="Fermer">×</button></div>
+    <form id="editForm" style="display:contents">
+      <div class="modal-b">
+        <p style="font-size:12px;color:var(--slate);margin:0 0 14px" id="e_srcHint"></p>
+        <div class="field"><label for="e_name">Désignation *</label><input id="e_name" required></div>
+        <div class="grid3">
+          <div class="field"><label for="e_category">Catégorie</label><input id="e_category"></div>
+          <div class="field"><label for="e_subcategory">Sous-catégorie</label><input id="e_subcategory"></div>
+          <div class="field"><label for="e_manufacturer">Fabricant</label><input id="e_manufacturer"></div>
+        </div>
+        <div class="grid3">
+          <div class="field"><label for="e_catalog_ref">Référence catalogue</label><input id="e_catalog_ref"></div>
+          <div class="field"><label for="e_lot">Numéro de lot</label><input id="e_lot"></div>
+          <div class="field"><label for="e_serial">Numéro de série</label><input id="e_serial"></div>
+        </div>
+        <div class="grid3">
+          <div class="field"><label for="e_qty_received">Quantité reçue</label><input id="e_qty_received" type="number" step="any"></div>
+          <div class="field"><label for="e_qty_remaining">Quantité restante</label><input id="e_qty_remaining" type="number" step="any"></div>
+          <div class="field"><label for="e_unit">Unité</label><input id="e_unit"></div>
+        </div>
+        <div class="grid3">
+          <div class="field"><label for="e_date_reception">Date de réception</label><input id="e_date_reception" type="date"></div>
+          <div class="field"><label for="e_date_manufacture">Date de fabrication</label><input id="e_date_manufacture" type="date"></div>
+          <div class="field"><label for="e_date_expiry">Date de péremption</label><input id="e_date_expiry" type="date"></div>
+        </div>
+        <div class="grid3">
+          <div class="field"><label for="e_location">Emplacement</label><input id="e_location"></div>
+          <div class="field"><label for="e_temperature">Température</label><input id="e_temperature"></div>
+          <div class="field"><label for="e_min_level">Seuil minimum</label><input id="e_min_level" type="number" step="any"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label for="e_source">Source / origine</label><input id="e_source"></div>
+          <div class="field"><label for="e_status">Statut</label>
+            <select id="e_status">
+              <option value="active">En service</option>
+              <option value="quarantine">Quarantaine</option>
+              <option value="expired_flagged">Signalé périmé</option>
+              <option value="out_of_service">Hors service</option>
+            </select></div>
+        </div>
+        <div class="field"><label for="e_notes">Observations</label><textarea id="e_notes"></textarea></div>
+      </div>
+      <div class="modal-f">
+        <button class="btn btn-ghost" type="button" data-close>Annuler</button>
+        <button class="btn" type="submit">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════════ MODAL : PRÉLÈVEMENT ══════════════ -->
+<div class="modal" id="mIssue">
+  <div class="modal-box">
+    <div class="modal-h"><h3 id="iTitle">Prélèvement de stock</h3>
+      <button class="modal-x" data-close type="button" aria-label="Fermer">×</button></div>
+    <form id="issueForm" style="display:contents">
+      <div class="modal-b">
+        <div class="note info" id="iInfo" style="background:var(--navy-050);border-color:var(--navy-700)"></div>
+        <div class="note" id="iDerog" style="display:none"></div>
+        <div class="grid2">
+          <div class="field"><label for="iQty">Quantité prélevée *</label>
+            <input id="iQty" type="number" min="0" step="any" required></div>
+          <div class="field"><label for="iWho">Agent / unité demandeuse</label>
+            <input id="iWho" placeholder="Nom et unité"></div>
+        </div>
+        <div class="field"><label for="iWhy" id="iWhyLbl">Observation (facultatif)</label>
+          <textarea id="iWhy"></textarea></div>
+      </div>
+      <div class="modal-f">
+        <button class="btn btn-ghost" type="button" data-close>Annuler</button>
+        <button class="btn" type="submit">Confirmer la sortie</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="labstock-data.js"></script>
+<script src="labstock.js"></script>
+</body>
+</html>
