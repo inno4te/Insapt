@@ -9,10 +9,11 @@
 
   /* ---------------- Auth ---------------- */
   var USER = "labiep", PASS = "lab1ep";
-  var LS_AUTH = "insapt_ls_auth";
-  var LS_DATA = "insapt_ls_data";
+  var LS_AUTH  = "insapt_ls_auth";
+  var LS_DATA  = "insapt_ls_data";
   var LS_MOVES = "insapt_ls_moves";
-  var LS_CFG = "insapt_ls_cfg";
+  var LS_CFG   = "insapt_ls_cfg";
+  var LS_QUEUE = "insapt_ls_queue";   /* offline mutation queue */
 
   /* ------------- Alert thresholds (SOP R-3 §4.5 / §4.2) ------------- */
   var CFG_DEFAULT = {
@@ -28,6 +29,9 @@
   };
 
   var DB = [], MOVES = [], CFG = {}, VIEW = "dash", SORT = { k: "name", d: 1 };
+  var ONLINE = false;          /* true once a successful GS call returns */
+  var QUEUE  = [];             /* offline mutations waiting to flush      */
+  var SYNCING = false;         /* prevents re-entrant flush               */
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
 
@@ -84,9 +88,10 @@
   /* ---------------- Persistence ---------------- */
   function save() {
     try {
-      localStorage.setItem(LS_DATA, JSON.stringify(DB));
+      localStorage.setItem(LS_DATA,  JSON.stringify(DB));
       localStorage.setItem(LS_MOVES, JSON.stringify(MOVES));
-      localStorage.setItem(LS_CFG, JSON.stringify(CFG));
+      localStorage.setItem(LS_CFG,   JSON.stringify(CFG));
+      localStorage.setItem(LS_QUEUE, JSON.stringify(QUEUE));
     } catch (e) { toast("Stockage local plein — exportez vos données", "err"); }
   }
   function load() {
@@ -100,6 +105,7 @@
       DB = (d && d.length) ? d : (window.LS_SEED || []).map(function (x) { return Object.assign({}, x); });
     } catch (e) { DB = (window.LS_SEED || []).slice(); }
     try { MOVES = JSON.parse(localStorage.getItem(LS_MOVES) || "[]"); } catch (e) { MOVES = []; }
+    try { QUEUE = JSON.parse(localStorage.getItem(LS_QUEUE) || "[]"); } catch (e) { QUEUE = []; }
   }
   function resetSeed() {
     if (!confirm("Réinitialiser la base à partir des fichiers sources ?\nToutes les modifications locales seront perdues.")) return;
@@ -166,6 +172,42 @@
     $("#login").style.display = "none";
     $("#app").classList.add("on");
     load(); buildFilters(); render();
+    autoConnect();
+  }
+
+  /* On login: if a GS URL is configured, pull the live database
+     so all admins share the same up-to-date source of truth.
+     If offline, work from localStorage and queue mutations. */
+  function autoConnect() {
+    if (!CFG.gsUrl) { setSyncIdle("Stockage local"); return; }
+    setSyncBusy("Connexion en cours…");
+    gsCall("ls_list")
+      .then(function (j) {
+        if (!j || !j.ok || !j.records) throw new Error("Réponse inattendue");
+        if (j.records.length) {
+          DB = j.records; save();
+          buildFilters(); render();
+          toast("Base rechargée depuis Google — " + DB.length + " lots", "ok");
+        }
+        ONLINE = true;
+        setSyncBusy("Vérification des mouvements…");
+        return gsCall("ls_moves");
+      })
+      .then(function (jm) {
+        if (jm && jm.ok && jm.moves && jm.moves.length > MOVES.length) {
+          MOVES = jm.moves; save();
+        }
+        setSync(true, "En ligne — Google Sheets", QUEUE.length || null);
+        if (QUEUE.length) flushQueue();
+      })
+      .catch(function (err) {
+        setSync(false, "Hors ligne — stockage local");
+        if (QUEUE.length) toast(QUEUE.length + " modification(s) en attente de synchronisation", "warn");
+      });
+  }
+  function setSyncIdle(msg) {
+    var dot = $("#syncDot"); if (!dot) return;
+    dot.className = "sync-dot"; $("#syncTxt").textContent = msg;
   }
   function logout() {
     try { sessionStorage.removeItem(LS_AUTH); } catch (e) {}
@@ -421,6 +463,7 @@
     save(); $("#mEdit").classList.remove("on");
     buildFilters(); render();
     toast(EDIT_ID ? "Lot mis à jour" : "Lot ajouté à la base", "ok");
+    pushRemote("upsert", { record: rec });
   }
   function delLot(id) {
     var r = DB.filter(function (x) { return x.id === id; })[0]; if (!r) return;
@@ -429,6 +472,7 @@
     DB = DB.filter(function (x) { return x.id !== id; });
     logMove("del", id, r.name, qty(r), "Lot supprimé de la base");
     save(); render(); toast("Lot supprimé", "ok");
+    pushRemote("del", { id: id });
   }
 
   /* ================= FEFO ISSUE ================= */
@@ -546,11 +590,15 @@
     r.qty_remaining = qty(r) - n;
     r.last_update = nowISO();
     var kind = band(r) === "exp" ? "scrap" : "out";
+    var mv = { ts: new Date().toISOString(), kind: kind, id: r.id, name: r.name,
+               qty: n, note: why, who: who || "", lot: r.lot || "", loc: r.location || "" };
     logMove(kind, r.id, r.name, n, why, who, r.lot, r.location);
     save(); $("#mIssue").classList.remove("on");
     render(); renderOut();
     toast((kind === "scrap" ? "Mise au rebut enregistrée : " : "Sortie enregistrée : ") +
       n + " " + (r.unit || "") + " — reste " + r.qty_remaining, "ok");
+    pushRemote("upsert", { record: r });
+    pushRemote("move", { move: mv });
   }
   function logMove(kind, id, name, n, note, who, lot, loc) {
     MOVES.unshift({
@@ -611,11 +659,16 @@
         "Réception < 12 mois — décision Directeur LNSP consignée le " + nowISO();
     }
     DB.push(rec);
+    var inMv = { ts: new Date().toISOString(), kind: "in", id: rec.id, name: rec.name,
+                 qty: rec.qty_received, note: "Réception — " + rec.source + " · PVIR",
+                 who: g("#rWho"), lot: rec.lot || "", loc: rec.location || "" };
     logMove("in", rec.id, rec.name, rec.qty_received,
       "Réception — " + rec.source + " · PVIR", g("#rWho"), rec.lot, rec.location);
     save(); buildFilters(); render();
     $("#recvForm").reset(); $("#rCheck").style.display = "none";
     toast("Lot réceptionné et enregistré — " + rec.name, "ok");
+    pushRemote("upsert", { record: rec });
+    pushRemote("move", { move: inMv });
   }
 
   /* ================= REPORTS ================= */
@@ -965,7 +1018,8 @@
       .forEach(function (k) { var e = $("#c_" + k); if (e) e.value = CFG[k]; });
     $("#cfgStats").innerHTML =
       "<b>" + DB.length + "</b> lots · <b>" + MOVES.length + "</b> mouvements · " +
-      "Source initiale : " + (window.LS_SEED_META ? window.LS_SEED_META.count : 0) + " lots importés des fichiers LaBiEp";
+      "Source initiale : " + (window.LS_SEED_META ? window.LS_SEED_META.count : 0) + " lots importés des fichiers LaBiEp" +
+      (QUEUE.length ? " · <b style='color:var(--warn)'>" + QUEUE.length + " opération(s) en attente</b>" : "");
   }
   function saveCfg(e) {
     e.preventDefault();
@@ -973,8 +1027,73 @@
       .forEach(function (k) { CFG[k] = Number($("#c_" + k).value) || CFG_DEFAULT[k]; });
     CFG.gsUrl = $("#c_gsUrl").value.trim();
     CFG.gsKey = $("#c_gsKey").value.trim() || CFG_DEFAULT.gsKey;
+    QUEUE = [];  /* clear any stale queue against a new URL */
     save(); render(); toast("Paramètres enregistrés", "ok");
+    autoConnect();
   }
+  /* -------- Offline queue --------
+     Every mutation that needs to reach GS is routed through pushRemote().
+     If online, the call fires immediately.  If offline, the mutation is
+     stored in QUEUE and replayed in order when the connection returns.
+     Format: { action, payload, ts }   action in {upsert,del,move}       */
+  function pushRemote(action, payload) {
+    if (ONLINE && CFG.gsUrl) {
+      var gsAction = action === "upsert" ? "ls_upsert" :
+                     action === "del"    ? "ls_delete" : "ls_move";
+      setSyncBusy("Synchronisation…");
+      gsCall(gsAction, payload)
+        .then(function (j) {
+          if (!j || !j.ok) throw new Error("Erreur serveur");
+          setSync(true, "Synchronisé — " + new Date().toLocaleTimeString("fr"));
+        })
+        .catch(function (err) {
+          /* Connection dropped mid-session — queue for later */
+          ONLINE = false;
+          setSync(false, "Hors ligne — modification en attente");
+          QUEUE.push({ action: action, payload: payload, ts: new Date().toISOString() });
+          save();
+        });
+    } else {
+      QUEUE.push({ action: action, payload: payload, ts: new Date().toISOString() });
+      save();
+      var cnt = QUEUE.length;
+      setSyncIdle("Hors ligne · " + cnt + " en attente");
+    }
+  }
+
+  /* Replay queued mutations in the order they were created. */
+  function flushQueue() {
+    if (SYNCING || !QUEUE.length || !CFG.gsUrl) return;
+    SYNCING = true;
+    setSyncBusy("Synchronisation (" + QUEUE.length + " opérations)…");
+    var remaining = QUEUE.slice();
+    QUEUE = []; save();
+
+    function next(i) {
+      if (i >= remaining.length) {
+        SYNCING = false;
+        setSync(true, "Synchronisé — " + new Date().toLocaleTimeString("fr"));
+        toast("Synchronisation complète — " + remaining.length + " opération(s)", "ok");
+        return;
+      }
+      var m = remaining[i];
+      var gsAction = m.action === "upsert" ? "ls_upsert" :
+                     m.action === "del"    ? "ls_delete" : "ls_move";
+      gsCall(gsAction, m.payload)
+        .then(function (j) {
+          if (!j || !j.ok) throw new Error("err");
+          next(i + 1);
+        })
+        .catch(function () {
+          /* Put back unprocessed items and bail */
+          QUEUE = remaining.slice(i).concat(QUEUE);
+          save(); SYNCING = false;
+          setSync(false, "Erreur de synchronisation · " + QUEUE.length + " en attente");
+        });
+    }
+    next(0);
+  }
+
   function gsCall(action, payload) {
     if (!CFG.gsUrl) return Promise.reject(new Error("URL Google Apps Script non configurée"));
     var url = CFG.gsUrl;
@@ -989,7 +1108,9 @@
       .then(function (r) { return r.json(); });
   }
   function syncPush() {
-    var b = $("#btnPush"); b.disabled = true; b.textContent = "Envoi…";
+    /* Manual full-replace — useful after an import or reset.
+       Normal usage: individual changes sync automatically via pushRemote(). */
+    var b = $("#btnPush"); b.disabled = true; b.textContent = "Envoi complet…";
     gsCall("ls_seed", { records: DB })
       .then(function (j) {
         if (!j.ok) throw new Error(j.error || "Erreur serveur");
@@ -1006,8 +1127,8 @@
         if (!j.ok) throw new Error(j.error || "Erreur serveur");
         if (!j.records || !j.records.length) throw new Error("La feuille Google est vide — publiez d'abord la base");
         DB = j.records; save(); buildFilters(); render();
-        setSync(true, "Base rechargée depuis Google Sheets — " + DB.length + " lots");
-        toast("Rechargé depuis Google : " + DB.length + " lots", "ok");
+        setSync(true, "En ligne — Google Sheets");
+        toast("Base rechargée : " + DB.length + " lots", "ok");
       })
       .catch(function (e) { setSync(false, e.message); toast("Échec du chargement : " + e.message, "err"); })
       .then(function () { b.disabled = false; b.textContent = "Recharger depuis Google"; });
@@ -1017,17 +1138,26 @@
     gsCall("ping")
       .then(function (j) {
         if (!j.ok) throw new Error("Réponse inattendue");
-        setSync(true, "Connexion établie");
+        setSync(true, "En ligne — Google Sheets");
         toast("Connexion Google Apps Script établie", "ok");
       })
       .catch(function (e) { setSync(false, e.message); toast("Échec : " + e.message, "err"); })
       .then(function () { b.disabled = false; b.textContent = "Tester la connexion"; });
   }
-  function setSync(ok, msg) {
-    $("#syncDot").className = "sync-dot " + (ok ? "ok" : "err");
-    $("#syncTxt").textContent = msg || (ok ? "Connecté" : "Hors ligne");
+  function setSync(ok, msg, pending) {
+    ONLINE = !!ok;
+    var dot = $("#syncDot"); if (!dot) return;
+    dot.className = "sync-dot " + (ok ? "ok" : "err");
+    var label = msg || (ok ? "En ligne — Google Sheets" : "Hors ligne — stockage local");
+    if (pending) label += " · " + pending + " en attente";
+    $("#syncTxt").textContent = label;
     var e = $("#cfgSyncMsg");
     if (e) { e.className = "note " + (ok ? "ok" : "danger"); e.innerHTML = "<b>" + (ok ? "Succès" : "Échec") + "</b>" + esc(msg); e.style.display = ""; }
+    if (ok && QUEUE.length) flushQueue();
+  }
+  function setSyncBusy(msg) {
+    var dot = $("#syncDot"); if (!dot) return;
+    dot.className = "sync-dot"; $("#syncTxt").textContent = msg || "Synchronisation…";
   }
   function exportBackup() {
     var blob = new Blob([JSON.stringify({ db: DB, moves: MOVES, cfg: CFG, at: new Date().toISOString() }, null, 1)],
