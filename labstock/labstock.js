@@ -8,7 +8,17 @@
   "use strict";
 
   /* ---------------- Auth ---------------- */
-  var USER = "labiep", PASS = "lab1ep";
+  /* ── Accounts ──────────────────────────────────────────────────
+     SUPER-ADMIN: full access incl. user management & audit
+     ADMIN:       all stock ops + reports + dashboard
+     OPERATOR:    daily stock ops (recv / issue / view)
+     Operator accounts are created by admins in GS (LabUsers tab).
+  ──────────────────────────────────────────────────────────── */
+  var BUILT_IN = [
+    { user: "labiep",  pass: "lab1ep",  role: "superadmin", name: "Administrateur Système" },
+    { user: "labadmin",pass: "lab4dm1n",role: "admin",      name: "Chef de Laboratoire" }
+  ];
+  var CURRENT_USER = null;   /* set on login: {user, role, name} */
   var LS_AUTH  = "insapt_ls_auth";
   var LS_DATA  = "insapt_ls_data";
   var LS_MOVES = "insapt_ls_moves";
@@ -16,16 +26,24 @@
   var LS_QUEUE = "insapt_ls_queue";   /* offline mutation queue */
 
   /* ------------- Alert thresholds (SOP R-3 §4.5 / §4.2) ------------- */
+  /* ============================================================
+     HARDWIRED BACKEND — no user configuration required.
+     URL and key are set at build time; the Settings page shows
+     them read-only for reference.
+  ============================================================ */
+  var GS_URL = "https://script.google.com/macros/s/AKfycbyZr2pxJS1mBqLRQv9Oli5jbbenmD-HHj6AvL_GH49Qp1XAHimIBitIdOUUqxDFyZaKFw/exec";
+  var GS_KEY = "INSAPT-SCM-KEY";
+
   var CFG_DEFAULT = {
-    critDays: 30,      // SOP R-3 §4.5 — alerte prioritaire
-    warnDays: 90,      // SOP R-3 §4.3 — double étiquetage
-    watchDays: 365,    // SOP R-3 §4.2 — < 12 mois à réception
-    lossTarget: 3,     // KPI : taux de péremption cible < 3 %
-    varTarget: 2,      // KPI : écart inventaire < 2 %
-    leadTime: 90,      // délai d'approvisionnement (jours)
-    coverage: 60,      // stock de sécurité (jours)
-    gsUrl: "",
-    gsKey: "INSAPT-SCM-KEY"
+    critDays: 30,
+    warnDays: 90,
+    watchDays: 365,
+    lossTarget: 3,
+    varTarget: 2,
+    leadTime: 90,
+    coverage: 60,
+    gsUrl: GS_URL,    /* hardwired — always online */
+    gsKey: GS_KEY
   };
 
   var DB = [], MOVES = [], CFG = {}, VIEW = "dash", SORT = { k: "name", d: 1 };
@@ -158,21 +176,58 @@
     f.addEventListener("submit", function (e) {
       e.preventDefault();
       var u = $("#lu").value.trim().toLowerCase(), p = $("#lp").value;
-      if (u === USER && p === PASS) {
-        try { sessionStorage.setItem(LS_AUTH, "1"); } catch (e2) {}
+      /* 1. Check built-in accounts first (always available offline) */
+      var bi = BUILT_IN.filter(function(a){ return a.user === u && a.pass === p; })[0];
+      if (bi) {
+        CURRENT_USER = bi;
+        try { sessionStorage.setItem(LS_AUTH, JSON.stringify(bi)); } catch(e2) {}
         openApp();
-      } else {
-        $("#loginErr").classList.add("show");
-        $("#lp").value = ""; $("#lp").focus();
+        return;
       }
+      /* 2. Try GS operator accounts */
+      $("#loginErr").innerHTML = "Vérification du compte…"; $("#loginErr").classList.add("show");
+      gsCallRaw("ls_auth", { user: u, pass: p })
+        .then(function(j) {
+          if (j && j.ok) {
+            CURRENT_USER = { user: u, role: j.role || "operator", name: j.name || u };
+            try { sessionStorage.setItem(LS_AUTH, JSON.stringify(CURRENT_USER)); } catch(e2) {}
+            openApp();
+          } else {
+            showLoginErr("Identifiant ou mot de passe incorrect.");
+          }
+        })
+        .catch(function() {
+          /* GS unreachable — only built-in accounts allowed */
+          showLoginErr("Identifiant incorrect ou serveur inaccessible.");
+        });
     });
-    try { if (sessionStorage.getItem(LS_AUTH) === "1") openApp(); } catch (e) {}
+    /* Resume session */
+    try {
+      var s = sessionStorage.getItem(LS_AUTH);
+      if (s) { CURRENT_USER = JSON.parse(s); if (CURRENT_USER) openApp(); }
+    } catch(e) {}
+  }
+  function showLoginErr(msg) {
+    var el = $("#loginErr"); el.innerHTML = msg; el.classList.add("show");
+    $("#lp").value = ""; $("#lp").focus();
   }
   function openApp() {
     $("#login").style.display = "none";
     $("#app").classList.add("on");
+    applyRole();          /* show / hide nav items based on role */
     load(); buildFilters(); render();
-    autoConnect();
+    autoConnect();        /* connect & pull live data immediately */
+  }
+  /* Show/hide nav items based on role */
+  function applyRole() {
+    var r = CURRENT_USER ? CURRENT_USER.role : "operator";
+    var name = CURRENT_USER ? CURRENT_USER.name : "";
+    /* user display */
+    var ud = $("#userDisplay"); if (ud) ud.textContent = name + " (" + r + ")";
+    /* super-admin only: user management, audit */
+    $$(".role-super").forEach(function(el){ el.style.display = (r === "superadmin") ? "" : "none"; });
+    /* admin + super: reports, analysis, settings */
+    $$(".role-admin").forEach(function(el){ el.style.display = (r === "superadmin" || r === "admin") ? "" : "none"; });
   }
 
   /* On login: if a GS URL is configured, pull the live database
@@ -210,6 +265,7 @@
     dot.className = "sync-dot"; $("#syncTxt").textContent = msg;
   }
   function logout() {
+    CURRENT_USER = null;
     try { sessionStorage.removeItem(LS_AUTH); } catch (e) {}
     location.reload();
   }
@@ -220,13 +276,18 @@
     $$(".nav a").forEach(function (a) { a.classList.toggle("on", a.dataset.v === v); });
     $$(".view").forEach(function (s) { s.classList.toggle("on", s.id === "v-" + v); });
     var titles = {
-      dash: ["Tableau de bord", "Vue d'ensemble des stocks et alertes de péremption"],
-      inv: ["Inventaire", "Base complète des lots — recherche, ajout, modification"],
-      out: ["Sortie de stock (PPSO/FEFO)", "Prélèvement selon la séquence Premier Périmé Sorti en Premier"],
-      recv: ["Réception", "Enregistrement d'un nouveau lot avec contrôles SOP R-2"],
-      rep: ["Rapports", "Rapports réglementaires exportables en CSV"],
-      ana: ["Analyse", "Doublons, niveaux de commande et qualité des données"],
-      cfg: ["Paramètres & synchronisation", "Seuils d'alerte et connexion Google Sheets"]
+      dash:     ["Tableau de bord",          "Vue d'ensemble des stocks et alertes de péremption"],
+      inv:      ["Inventaire",               "Base complète des lots — recherche, ajout, modification"],
+      out:      ["Sortie de stock PPSO/FEFO","Prélèvement selon le principe Premier Périmé Sorti en Premier"],
+      recv:     ["Réception",               "Enregistrement d'un nouveau lot avec contrôles SOP R-2"],
+      upload:   ["Importer des données",    "Import Excel ou CSV dans la base de stock"],
+      rep:      ["Rapports",                "Rapports réglementaires exportables en CSV"],
+      order:    ["Niveaux de commande",     "Recommandations de réapprovisionnement et points de commande"],
+      ana:      ["Analyse",                 "Doublons, qualité des données et indicateurs"],
+      admindash:["Tableau de bord admin",   "Surveillance complète — péremptions, conformité FEFO, inventaire"],
+      users:    ["Gestion des comptes",     "Créer et gérer les comptes opérateurs du LaBiEp"],
+      audit:    ["Audit & conformité FEFO", "Journal complet, analyse des pertes et conformité PPSO par agent"],
+      cfg:      ["Paramètres",             "Seuils d'alerte, synchronisation et sauvegarde"]
     };
     var t = titles[v] || ["", ""];
     $("#pgTitle").innerHTML = esc(t[0]) + "<small>" + esc(t[1]) + "</small>";
@@ -1094,6 +1155,14 @@
     next(0);
   }
 
+  /* Raw GS call used during login (before CFG is loaded) */
+  function gsCallRaw(action, payload) {
+    return fetch(GS_URL, {
+      method: "POST", redirect: "follow",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(Object.assign({ action: action, key: GS_KEY }, payload || {}))
+    }).then(function(r){ return r.json(); });
+  }
   function gsCall(action, payload) {
     if (!CFG.gsUrl) return Promise.reject(new Error("URL Google Apps Script non configurée"));
     var url = CFG.gsUrl;
@@ -1193,19 +1262,28 @@
     var bd = $("#navBadgeDash"), bo = $("#navBadgeOut");
     if (bd) { bd.textContent = exp + soon; bd.style.display = (exp + soon) ? "" : "none"; }
     if (bo) { bo.textContent = exp; bo.style.display = exp ? "" : "none"; }
-    if (VIEW === "dash") renderDash();
-    else if (VIEW === "inv") renderInv();
-    else if (VIEW === "out") renderOut();
-    else if (VIEW === "rep") renderRep();
-    else if (VIEW === "ana") renderAna();
-    else if (VIEW === "cfg") renderCfg();
+    if (VIEW === "dash")   renderDash();
+    else if (VIEW === "inv")   renderInv();
+    else if (VIEW === "out")   renderOut();
+    else if (VIEW === "recv")  {}             /* handled by form events */
+    else if (VIEW === "rep")   renderRep();
+    else if (VIEW === "ana")   renderAna();
+    else if (VIEW === "upload") renderUpload();
+    else if (VIEW === "order")  renderOrderReport();
+    else if (VIEW === "admindash") renderAdminDash();
+    else if (VIEW === "users")    renderUsers();
+    else if (VIEW === "audit")    renderAudit();
+    else if (VIEW === "cfg")   renderCfg();
   }
+  var VIEWS_ADMIN = ["rep","ana","order","admindash","users","audit","upload","cfg"];
+  var VIEWS_SUPER = ["users","audit","admindash"];
 
   /* ================= WIRE UP ================= */
   document.addEventListener("DOMContentLoaded", function () {
     initLogin();
     $$(".nav a").forEach(function (a) { a.onclick = function (e) { e.preventDefault(); go(a.dataset.v); }; });
     $("#btnLogout").onclick = logout;
+    $("#btnMasterXLSX").onclick = downloadMasterXLSX;
     ["#fQ", "#fCat", "#fLoc", "#fTemp", "#fBand"].forEach(function (s) {
       var e = $(s); if (e) e.addEventListener(e.tagName === "INPUT" ? "input" : "change", renderInv);
     });
@@ -1240,4 +1318,838 @@
       if (e.key === "Escape") $$(".modal.on").forEach(function (m) { m.classList.remove("on"); });
     });
   });
+
+
+  /* ================================================================
+     FEATURE BLOCK 2 — Added features
+     1. Excel / CSV upload
+     2. Color-coded Excel master download (SheetJS)
+     3. Order level report
+     4. FEFO pick form → PDF slip (jsPDF, no expired)
+     5. Super-admin dashboard
+     6. User management
+     7. FEFO compliance audit
+  ================================================================ */
+
+  /* ──────────────────────────────────────────────────────────────
+     1. UPLOAD (Excel / CSV)
+  ────────────────────────────────────────────────────────────── */
+  var UPLOAD_PREVIEW = [];
+  function renderUpload() {
+    var h = '<div class="note"><b>Import Excel ou CSV</b>' +
+      'Les colonnes sont détectées automatiquement. Colonnes reconnues : ' +
+      'Désignation / Description, Fabricant / Manufacturer, Réf. catalogue / Reference, ' +
+      'N° de lot / Lot, Qté reçue, Qté restante, Unité, Date réception, Date péremption, ' +
+      'Emplacement, Température, Catégorie, Notes/Remarques. ' +
+      'Les colonnes non reconnues sont ignorées. Les lots existants avec le même numéro de lot ET la même désignation sont mis à jour.</div>';
+    h += '<div class="card"><div class="card-h"><h3>Choisir le fichier</h3></div><div class="card-b">' +
+      '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">' +
+      '<label class="btn btn-ghost" style="cursor:pointer">📂 Parcourir<input id="uploadFile" type="file" accept=".xlsx,.xls,.csv" style="display:none"></label>' +
+      '<span id="uploadName" style="color:var(--slate);font-size:13px">Aucun fichier sélectionné</span></div>' +
+      '<div id="uploadPreview" style="margin-top:16px"></div></div></div>';
+    $("#v-upload").innerHTML = h;
+    $("#uploadFile").addEventListener("change", handleUploadFile);
+  }
+  function handleUploadFile(ev) {
+    var f = ev.target.files[0]; if (!f) return;
+    $("#uploadName").textContent = f.name;
+    var ext = f.name.split(".").pop().toLowerCase();
+    var reader = new FileReader();
+    if (ext === "csv") {
+      reader.onload = function(e) { parseCSVUpload(e.target.result); };
+      reader.readAsText(f, "utf-8");
+    } else {
+      reader.onload = function(e) { parseXLSXUpload(e.target.result); };
+      reader.readAsArrayBuffer(f);
+    }
+  }
+  function parseXLSXUpload(ab) {
+    if (!window.XLSX) { toast("Chargement de la bibliothèque Excel…",""); loadXLSX(function(){ parseXLSXUpload(ab); }); return; }
+    try {
+      var wb = window.XLSX.read(ab, { type:"array", cellDates:true });
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var rows = window.XLSX.utils.sheet_to_json(ws, { raw:false, defval:"" });
+      showUploadPreview(rows);
+    } catch(e) { toast("Erreur de lecture : " + e.message, "err"); }
+  }
+  function parseCSVUpload(text) {
+    var lines = text.replace(/\r/g,"").split("\n").filter(Boolean);
+    if (!lines.length) return;
+    var sep = lines[0].includes(";") ? ";" : ",";
+    var hdr = lines[0].split(sep).map(function(h){ return h.replace(/^"|"$/g,"").trim(); });
+    var rows = lines.slice(1).map(function(l){
+      var o = {}, vals = l.split(sep).map(function(v){ return v.replace(/^"|"$/g,"").trim(); });
+      hdr.forEach(function(k,i){ o[k] = vals[i] || ""; });
+      return o;
+    });
+    showUploadPreview(rows);
+  }
+  var COL_MAP = {
+    "désignation":"name","designation":"name","description":"name","article":"name","reagent":"name",
+    "fabricant":"manufacturer","manufacturer":"manufacturer","marque":"manufacturer",
+    "réf. catalogue":"catalog_ref","reference":"catalog_ref","ref catalogue":"catalog_ref","article number":"catalog_ref","catalog_ref":"catalog_ref",
+    "n° de lot":"lot","lot number":"lot","lot":"lot","batch":"lot",
+    "qté reçue":"qty_received","quantite recue":"qty_received","qty received":"qty_received","qty recu":"qty_received",
+    "qté restante":"qty_remaining","quantite restante":"qty_remaining","qty remaining":"qty_remaining","stock amount":"qty_remaining",
+    "unité":"unit","unit":"unit","unité de mesure":"unit",
+    "date réception":"date_reception","date reception":"date_reception","date de reception":"date_reception",
+    "date péremption":"date_expiry","date expiry":"date_expiry","expiration":"date_expiry","date de expiration":"date_expiry","expiry date":"date_expiry",
+    "date fabrication":"date_manufacture","manufacture date":"date_manufacture",
+    "emplacement":"location","location":"location","storage place":"location","salle":"location",
+    "température":"temperature","temperature":"temperature","temp":"temperature",
+    "catégorie":"category","category":"category","type":"category",
+    "sous-catégorie":"subcategory","subcategory":"subcategory",
+    "source":"source","notes":"notes","remarques":"notes","observations":"notes","remark":"notes",
+    "statut":"status","status":"status"
+  };
+  function normalH(h) {
+    return h.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim();
+  }
+  function mapRow(raw) {
+    var out = { category:"Import", subcategory:"", manufacturer:"", catalog_ref:"", lot:"",
+                qty_received:null, qty_remaining:null, unit:"unité", date_reception:"",
+                date_expiry:"", date_manufacture:"", location:"Non spécifié",
+                temperature:"Non spécifiée", source:"Import fichier", notes:"", status:"active" };
+    Object.keys(raw).forEach(function(k) {
+      var mapped = COL_MAP[normalH(k)];
+      if (mapped && raw[k]) out[mapped] = raw[k];
+    });
+    out.name = out.name || ""; 
+    ["qty_received","qty_remaining"].forEach(function(k){
+      if (out[k] !== null && out[k] !== "") out[k] = Number(String(out[k]).replace(",",".")) || null;
+    });
+    // fix dates
+    ["date_reception","date_expiry","date_manufacture"].forEach(function(k){
+      if (out[k]) { var d = parseD(out[k]); out[k] = d ? d.toISOString().slice(0,10) : ""; }
+    });
+    out.expiry_flag = out.date_expiry ? "ok" : (out.category === "Équipement" ? "n_a" : "missing");
+    return out;
+  }
+  function showUploadPreview(rows) {
+    UPLOAD_PREVIEW = rows.map(mapRow).filter(function(r){ return r.name && r.name.length > 1; });
+    if (!UPLOAD_PREVIEW.length) {
+      $("#uploadPreview").innerHTML = '<div class="note danger"><b>Aucune ligne reconnue</b>Vérifiez que la première ligne contient des en-têtes.</div>';
+      return;
+    }
+    var new_ = 0, upd = 0;
+    UPLOAD_PREVIEW.forEach(function(r) {
+      var ex = DB.filter(function(d){ return d.lot && r.lot && normalH(d.lot)===normalH(r.lot) && normalH(d.name)===normalH(r.name); })[0];
+      if (ex) upd++; else new_++;
+    });
+    var h = '<div class="note ok"><b>' + UPLOAD_PREVIEW.length + ' lignes reconnues</b> — ' +
+      new_ + ' nouveau(x) lot(s) · ' + upd + ' mise(s) à jour</div>';
+    h += '<div class="tbl-scroll"><table class="tbl"><thead><tr>' +
+      '<th>Désignation</th><th>Lot</th><th class="num">Qté reçue</th><th class="num">Qté rest.</th>' +
+      '<th>Péremption</th><th>Emplacement</th><th>Action</th></tr></thead><tbody>';
+    UPLOAD_PREVIEW.slice(0,30).forEach(function(r){
+      var ex = DB.filter(function(d){ return d.lot && r.lot && normalH(d.lot)===normalH(r.lot) && normalH(d.name)===normalH(r.name); })[0];
+      h += '<tr><td class="t-name">'+esc(r.name)+'</td><td class="mono">'+esc(r.lot||"—")+'</td>' +
+        '<td class="num">'+esc(r.qty_received||"")+'</td><td class="num">'+esc(r.qty_remaining||"")+'</td>' +
+        '<td class="mono">'+esc(r.date_expiry||"—")+'</td><td>'+esc(r.location)+'</td>' +
+        '<td><span class="pill '+(ex?"info":"ok")+'">'+(ex?"Mise à jour":"Nouveau")+'</span></td></tr>';
+    });
+    h += '</tbody></table></div>';
+    if (UPLOAD_PREVIEW.length > 30) h += '<div class="count-note">Aperçu limité aux 30 premières lignes sur '+UPLOAD_PREVIEW.length+'.</div>';
+    h += '<div style="margin-top:14px;display:flex;gap:10px">' +
+      '<button class="btn" id="btnImportConfirm">Importer les ' + UPLOAD_PREVIEW.length + ' lots</button>' +
+      '<button class="btn btn-ghost" id="btnImportCancel">Annuler</button></div>';
+    $("#uploadPreview").innerHTML = h;
+    $("#btnImportConfirm").onclick = confirmImport;
+    $("#btnImportCancel").onclick = function(){ $("#uploadPreview").innerHTML=""; UPLOAD_PREVIEW=[]; };
+  }
+  function confirmImport() {
+    var added=0, updated=0;
+    UPLOAD_PREVIEW.forEach(function(r) {
+      var ex = DB.filter(function(d){ return d.lot && r.lot && normalH(d.lot)===normalH(r.lot) && normalH(d.name)===normalH(r.name); })[0];
+      if (ex) {
+        Object.assign(ex, r, { id: ex.id, last_update: nowISO() });
+        pushRemote("upsert", { record: ex }); updated++;
+      } else {
+        r.id = "IMP" + Date.now().toString(36).toUpperCase() + (added);
+        r.last_update = nowISO();
+        DB.push(r);
+        pushRemote("upsert", { record: r }); added++;
+      }
+    });
+    save(); buildFilters(); render(); UPLOAD_PREVIEW = [];
+    toast("Import terminé : " + added + " ajout(s) · " + updated + " mise(s) à jour", "ok");
+    go("inv");
+  }
+  function loadXLSX(cb) {
+    if (window.XLSX) { cb(); return; }
+    var s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+    s.onload = cb; document.head.appendChild(s);
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     2. MASTER EXCEL DOWNLOAD (color-coded)
+  ────────────────────────────────────────────────────────────── */
+  function downloadMasterXLSX() {
+    loadXLSX(function() {
+      var wb = window.XLSX.utils.book_new();
+      var rows = DB.slice().sort(function(a,b){
+        var da=daysTo(a.date_expiry), db=daysTo(b.date_expiry);
+        if(da===null) return 1; if(db===null) return -1; return da-db;
+      });
+      var HDRS = ["ID","Désignation","Catégorie","Sous-catégorie","Fabricant","Réf. catalogue",
+                  "N° de lot","N° de série","Qté reçue","Qté restante","Unité",
+                  "Date réception","Date fabrication","Date péremption","Alerte péremption",
+                  "Jours restants","Emplacement","Température","Source","Statut","Observations"];
+      var data = [HDRS];
+      rows.forEach(function(r) {
+        var d = daysTo(r.date_expiry);
+        data.push([r.id,r.name,r.category,r.subcategory||"",r.manufacturer||"",r.catalog_ref||"",
+          r.lot||"",r.serial||"",r.qty_received,r.qty_remaining,r.unit||"",
+          r.date_reception||"",r.date_manufacture||"",r.date_expiry||"",
+          BAND_LBL[band(r)], d===null?"":d, r.location,r.temperature||"",r.source||"",r.status||"",r.notes||""]);
+      });
+      var ws = window.XLSX.utils.aoa_to_sheet(data);
+      // Column widths
+      ws["!cols"] = [8,35,18,16,20,16,14,14,9,9,8,13,13,13,14,9,22,14,18,10,30].map(function(w){return{wch:w};});
+      // Color coding by band
+      var FILL = { exp:"FFCCD5", d30:"FFD6D6", d90:"FFF3CD", d365:"FFF9E6", ok:"D4F4E2", nodate:"EEEEEE", na:"E8EEFF" };
+      var FONT = { exp:"8B0000", d30:"C0392B", d90:"7D4F00", d365:"7D6000", ok:"1A5C36", nodate:"555555", na:"1A3A6B" };
+      rows.forEach(function(r, i) {
+        var b = band(r);
+        var fill = FILL[b] || "FFFFFF", fnt = FONT[b] || "000000";
+        HDRS.forEach(function(_, ci) {
+          var addr = window.XLSX.utils.encode_cell({ r: i+1, c: ci });
+          if (!ws[addr]) return;
+          ws[addr].s = {
+            fill: { fgColor: { rgb: fill } },
+            font: { color: { rgb: fnt }, bold: ci===1 },
+            border: { bottom: { style:"thin", color:{rgb:"CCCCCC"} } }
+          };
+        });
+      });
+      // Header style
+      HDRS.forEach(function(_, ci) {
+        var addr = window.XLSX.utils.encode_cell({ r:0, c:ci });
+        if (!ws[addr]) return;
+        ws[addr].s = { fill:{fgColor:{rgb:"002664"}}, font:{color:{rgb:"FFFFFF"},bold:true}, alignment:{wrapText:true} };
+      });
+      window.XLSX.utils.book_append_sheet(wb, ws, "Inventaire");
+      // Legend sheet
+      var leg = window.XLSX.utils.aoa_to_sheet([
+        ["Couleur","Signification","Seuil"],
+        ["Rouge foncé","Périmé","Date dépassée"],["Rouge","Péremption critique","≤ 30 jours"],
+        ["Orange","Double étiquetage requis","≤ 90 jours"],["Jaune","Suivi rapproché","≤ 12 mois"],
+        ["Vert","Conforme","OK"],["Gris","Date absente","Non renseignée"],["Bleu clair","Non périssable","N/A"],
+        ["","Source : SOP R-3 / Manuel INSAPT",""]
+      ]);
+      window.XLSX.utils.book_append_sheet(wb, leg, "Légende");
+      // Summary sheet
+      var g=function(b){return DB.filter(function(r){return band(r)===b;}).length;};
+      var sum = window.XLSX.utils.aoa_to_sheet([
+        ["Rapport","Valeur"],
+        ["Date de génération", new Date().toLocaleString("fr")],
+        ["Total lots",DB.length],["Périmés",g("exp")],
+        ["≤ 30 jours",g("d30")],["≤ 90 jours",g("d90")],["≤ 12 mois",g("d365")],
+        ["Conformes",g("ok")],["Dates absentes",g("nodate")],
+        ["Non périssables",g("na")],
+        ["Taux de péremption",((g("exp")/Math.max(1,DB.filter(function(r){return band(r)!=="na";}).length))*100).toFixed(1)+"%"],
+        ["Généré par",CURRENT_USER?CURRENT_USER.name:"—"],
+        ["Référence","SOP R-3 §4 — INSAPT LaBiEp"]
+      ]);
+      window.XLSX.utils.book_append_sheet(wb, sum, "Résumé");
+      window.XLSX.writeFile(wb, "INSAPT_LaBiEp_MasterStock_" + nowISO() + ".xlsx");
+      toast("Téléchargement en cours…", "ok");
+    });
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     3. ORDER LEVEL REPORT (shared admin + operator view)
+  ────────────────────────────────────────────────────────────── */
+  function renderOrderReport() {
+    var cons = consumptionByItem();
+    var oldest = MOVES.filter(function(m){return m.kind==="out";});
+    var months = oldest.length > 0
+      ? Math.max(1, (Date.now() - new Date(oldest[oldest.length-1].ts)) / (30*86400000))
+      : 0;
+    var agg = {};
+    DB.forEach(function(r) {
+      if (r.category === "Équipement") return;
+      var k = normName(r.name);
+      if (!agg[k]) agg[k] = { name:r.name, qty:0, unit:r.unit, cat:r.category, lots:0, locs:{}, nearest:null, min:r.min_level };
+      agg[k].qty += qty(r); agg[k].lots++;
+      agg[k].locs[r.location] = 1;
+      var d = daysTo(r.date_expiry);
+      if (d !== null && (agg[k].nearest===null || d < agg[k].nearest)) agg[k].nearest = d;
+      if (r.min_level !== null && r.min_level !== undefined && agg[k].min === null) agg[k].min = r.min_level;
+    });
+    var rows = Object.keys(agg).map(function(k) {
+      var a = agg[k];
+      var used = cons[k] || 0;
+      var cmm = (months > 0 && used > 0) ? used / months : 0;
+      var rop = cmm > 0 ? Math.ceil(cmm * (CFG.leadTime/30) + cmm * (CFG.coverage/30)) : (a.min || null);
+      var cover = cmm > 0 ? Math.round(a.qty / cmm * 30) : null;
+      var toOrder = rop !== null ? Math.max(0, rop * 2 - a.qty) : null;
+      return { name:a.name, cat:a.cat, qty:a.qty, unit:a.unit, lots:a.lots,
+               nloc:Object.keys(a.locs).length, cmm:cmm, rop:rop, cover:cover,
+               toOrder:toOrder, nearest:a.nearest,
+               flag: (rop!==null && a.qty<=rop) ? "order" : (a.qty===0?"out":"ok") };
+    });
+    rows.sort(function(a,b){
+      var o={out:0,order:1,ok:2}; if(o[a.flag]!==o[b.flag]) return o[a.flag]-o[b.flag];
+      return (a.cover===null?1e9:a.cover)-(b.cover===null?1e9:b.cover);
+    });
+    var needOrder = rows.filter(function(r){return r.flag!=="ok";});
+    var h = '<div class="kpis">' +
+      kpi(needOrder.length?"danger":"ok", needOrder.length, "Articles à commander", "Sous le point de commande ou épuisés") +
+      kpi("", rows.length, "Articles suivis", "Tous réactifs et consommables") +
+      kpi("warn", rows.filter(function(r){return r.cmm===0;}).length, "Sans historique CMM", "Aucune sortie enregistrée") +
+      '</div>';
+    if (!months) {
+      h += '<div class="note warn"><b>Historique insuffisant</b>Aucune sortie enregistrée. ' +
+        'Les recommandations sont basées sur le stock minimum saisi. Enregistrez les sorties pour calculer la CMM automatiquement.</div>';
+    }
+    h += '<div class="card"><div class="card-h">' +
+      '<h3>Recommandations de commande<small>CMM × (délai ' + CFG.leadTime + ' j + couverture ' + CFG.coverage + ' j)</small></h3>' +
+      '<button class="btn btn-sm" id="csvOrder2">Exporter CSV</button>' +
+      '<button class="btn btn-gold btn-sm" id="xlsxOrder">Exporter Excel</button></div>' +
+      '<div class="card-b flush"><div class="tbl-scroll"><table class="tbl"><thead><tr>' +
+      '<th>Article</th><th>Catégorie</th><th class="num">Stock actuel</th>' +
+      '<th class="num">CMM</th><th class="num">Point de cde</th>' +
+      '<th class="num">Couverture</th><th class="num">Qté à commander</th><th>État</th>' +
+      '</tr></thead><tbody>';
+    rows.slice(0,300).forEach(function(r) {
+      var pill = r.flag==="out"?'<span class="pill exp">Épuisé</span>':
+                 r.flag==="order"?'<span class="pill d30">Commander</span>':
+                 '<span class="pill ok">Suffisant</span>';
+      h += '<tr' + (r.flag==="out"?' class="row-exp"':r.flag==="order"?' class="row-30"':"") + '>' +
+        '<td class="t-name">'+esc(r.name)+'</td><td>'+esc(r.cat)+'</td>' +
+        '<td class="num">'+r.qty.toLocaleString("fr")+" "+esc(r.unit||"")+"</td>" +
+        '<td class="num">'+(r.cmm?r.cmm.toFixed(1):"—")+"</td>" +
+        '<td class="num">'+(r.rop===null?"—":r.rop)+"</td>" +
+        '<td class="num">'+(r.cover===null?"—":r.cover+" j")+"</td>" +
+        '<td class="num" style="font-weight:700;color:var('+(r.toOrder?'--danger':'--ok')+')">'+
+          (r.toOrder===null?"—":r.toOrder>0?"+"+r.toOrder+" "+esc(r.unit||""):"Suffisant")+"</td>" +
+        "<td>"+pill+"</td></tr>";
+    });
+    h += '</tbody></table></div></div></div>';
+    $("#v-order").innerHTML = h;
+    $("#csvOrder2").onclick = function() {
+      downloadCSV("commandes",
+        ["Article","Catégorie","Stock","Unité","CMM","Point de commande","Couverture","Qté à commander","État"],
+        rows.map(function(r){return[r.name,r.cat,r.qty,r.unit,r.cmm?r.cmm.toFixed(2):"",r.rop||"",r.cover||"",r.toOrder||"",r.flag==="out"?"Épuisé":r.flag==="order"?"À commander":"Suffisant"];}));
+    };
+    $("#xlsxOrder").onclick = function() { downloadOrderXLSX(rows); };
+  }
+  function downloadOrderXLSX(rows) {
+    loadXLSX(function(){
+      var wb = window.XLSX.utils.book_new();
+      var data = [["Article","Catégorie","Stock actuel","Unité","CMM","Point de commande","Couverture (j)","Qté à commander","État"]];
+      rows.forEach(function(r){ data.push([r.name,r.cat,r.qty,r.unit,r.cmm?r.cmm.toFixed(2):"",r.rop||"",r.cover||"",r.toOrder||"",r.flag==="out"?"Épuisé":r.flag==="order"?"À commander":"Suffisant"]); });
+      var ws = window.XLSX.utils.aoa_to_sheet(data);
+      ws["!cols"] = [35,18,12,8,8,12,12,14,12].map(function(w){return{wch:w};});
+      window.XLSX.utils.book_append_sheet(wb,ws,"Commandes");
+      window.XLSX.writeFile(wb,"INSAPT_LaBiEp_Commandes_"+nowISO()+".xlsx");
+      toast("Export Excel commandes téléchargé","ok");
+    });
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     4. FEFO PICK FORM → PDF SLIP  (jsPDF, no expired lots)
+  ────────────────────────────────────────────────────────────── */
+  function openIssue(id, list) {
+    ISSUE_ID = id; ISSUE_LIST = list || [];
+    var r = DB.filter(function(x){ return x.id===id; })[0]; if (!r) return;
+    if (band(r) === "exp") { toast("Lot périmé — non disponible au prélèvement. Utilisez Mise au rebut.","err"); return; }
+    var rank = ISSUE_LIST.findIndex(function(x){ return x.id===id; });
+    var fefoFirst = ISSUE_LIST.filter(function(x){ return band(x)!=="exp" && qty(x)>0; })[0];
+    var isDerog = fefoFirst && fefoFirst.id !== id;
+    $("#iTitle").textContent = "Bon de prélèvement PPSO/FEFO";
+    var d = daysTo(r.date_expiry);
+    $("#iInfo").innerHTML =
+      "<b>" + esc(r.name) + "</b><br>" +
+      "Lot : " + esc(r.lot||r.catalog_ref||"—") + " · Péremption : " + fmtD(r.date_expiry) +
+      (d!==null?" (" + d + " j)":"") +
+      " · Disponible : <b>" + qty(r) + " " + esc(r.unit||"") + "</b><br>" +
+      '<span class="fefo-loc">📍 ' + esc(r.location) +
+      (r.temperature&&r.temperature!=="Non spécifiée"?" · "+esc(r.temperature):"") + "</span>";
+    $("#iQty").value=""; $("#iQty").max=qty(r);
+    $("#iWho").value=""; $("#iWhy").value="";
+    var w = $("#iDerog");
+    if (isDerog) {
+      w.className = "note warn";
+      w.innerHTML = "<b>Dérogation à la séquence PPSO/FEFO</b>Le lot prioritaire est <b>" +
+        esc(fefoFirst.lot||fefoFirst.name) + "</b> (" + fmtD(fefoFirst.date_expiry) +
+        ") · 📍 " + esc(fefoFirst.location) + ". Justification obligatoire (SOP R-3 §4.3).";
+      w.style.display = "";
+      $("#iWhy").required = true;
+      $("#iWhyLbl").textContent = "Justification de la dérogation PPSO (obligatoire)";
+    } else {
+      w.style.display="none";
+      $("#iWhy").required = false;
+      $("#iWhyLbl").textContent = "Observation (facultatif)";
+    }
+    $("#mIssue").classList.add("on");
+    setTimeout(function(){ $("#iQty").focus(); }, 60);
+  }
+  function confirmIssue(e) {
+    e.preventDefault();
+    var r = DB.filter(function(x){ return x.id===ISSUE_ID; })[0]; if(!r) return;
+    var n = Number($("#iQty").value);
+    if (!n || n<=0) { toast("Saisissez une quantité valide","err"); return; }
+    if (n > qty(r)) { toast("Quantité supérieure au stock disponible (" + qty(r) + ")","err"); return; }
+    var who = $("#iWho").value.trim(), why = $("#iWhy").value.trim();
+    if ($("#iWhy").required && !why) { toast("La justification de dérogation est obligatoire","err"); return; }
+    var fefoFirst = ISSUE_LIST.filter(function(x){ return band(x)!=="exp" && qty(x)>0; })[0];
+    var isDerog = fefoFirst && fefoFirst.id !== ISSUE_ID;
+    var oldQty = qty(r);
+    r.qty_remaining = oldQty - n;
+    r.last_update = nowISO();
+    var mv = { ts: new Date().toISOString(), kind:"out", id:r.id, name:r.name,
+               qty:n, note:why, who:who||CURRENT_USER?.name||"", lot:r.lot||"", loc:r.location||"",
+               fefo_ok: isDerog?"derogation":"ok", user:CURRENT_USER?.user||"" };
+    logMove("out", r.id, r.name, n, why, who||CURRENT_USER?.name, r.lot, r.location);
+    save(); $("#mIssue").classList.remove("on");
+    render(); renderOut();
+    pushRemote("upsert", { record: r });
+    pushRemote("move", { move: mv });
+    toast("Sortie enregistrée : " + n + " " + (r.unit||"") + " — reste " + r.qty_remaining, "ok");
+    /* Generate PDF pick slip */
+    setTimeout(function(){ generatePickSlip(r, n, who||CURRENT_USER?.name||"", why, isDerog, oldQty); }, 200);
+  }
+  function generatePickSlip(r, n, who, why, isDerog, wasQty) {
+    if (!window.jspdf) { loadJsPDF(function(){ generatePickSlip(r,n,who,why,isDerog,wasQty); }); return; }
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF({ orientation:"portrait", unit:"mm", format:"a5" });
+    var W = 148, M = 12, y = M;
+    // Header band
+    doc.setFillColor(0,38,100); doc.rect(0,0,W,22,"F");
+    doc.setFillColor(254,203,0); doc.rect(0,22,W,2,"F");
+    doc.setTextColor(255,255,255); doc.setFontSize(13); doc.setFont("helvetica","bold");
+    doc.text("INSAPT — LaBiEp", M, 10);
+    doc.setFontSize(9); doc.setFont("helvetica","normal");
+    doc.text("Bon de Prélèvement PPSO/FEFO", M, 17);
+    doc.text("N° " + Date.now().toString(36).toUpperCase(), W-M, 17, {align:"right"});
+    y = 30;
+    // Article block
+    doc.setTextColor(0,38,100); doc.setFontSize(10); doc.setFont("helvetica","bold");
+    doc.text("ARTICLE À PRÉLEVER", M, y); y += 6;
+    doc.setTextColor(20,33,61); doc.setFont("helvetica","bold"); doc.setFontSize(12);
+    doc.text(r.name, M, y); y += 6;
+    doc.setFont("helvetica","normal"); doc.setFontSize(9);
+    if (r.manufacturer) doc.text("Fabricant : " + r.manufacturer, M, y), y+=5;
+    doc.text("Référence : " + (r.catalog_ref||"—") + "   |   Lot : " + (r.lot||"—"), M, y); y+=7;
+    // FEFO Lot block
+    doc.setFillColor(0,38,100); doc.setTextColor(255,255,255);
+    doc.roundedRect(M, y, W-M*2, 22, 2, 2, "F"); y+=6;
+    doc.setFontSize(8); doc.text("SÉQUENCE PPSO / FEFO — LOT PRIORITAIRE", M+4, y); y+=5;
+    doc.setFontSize(11); doc.setFont("helvetica","bold");
+    doc.text("Lot : " + (r.lot||r.catalog_ref||"—"), M+4, y); y+=5;
+    doc.setFontSize(9); doc.setFont("helvetica","normal");
+    doc.text("Péremption : " + fmtD(r.date_expiry) + "   |   Qté disponible avant prélèvement : " + wasQty + " " + (r.unit||""), M+4, y);
+    y+=10; doc.setTextColor(20,33,61);
+    // Location highlight
+    doc.setFillColor(254,203,0); doc.setTextColor(0,38,100);
+    doc.roundedRect(M, y, W-M*2, 12, 2, 2, "F");
+    doc.setFontSize(10); doc.setFont("helvetica","bold");
+    doc.text("📍  " + r.location + (r.temperature&&r.temperature!=="Non spécifiée"?"  ·  "+r.temperature:""), M+4, y+8);
+    y+=16; doc.setTextColor(20,33,61);
+    // Quantity
+    doc.setFillColor(227,245,236); doc.roundedRect(M, y, W-M*2, 11, 2, 2, "F");
+    doc.setFontSize(10); doc.setFont("helvetica","bold"); doc.setTextColor(18,122,81);
+    doc.text("Quantité à prélever : " + n + " " + (r.unit||""), M+4, y+7.5);
+    y+=15; doc.setTextColor(20,33,61);
+    // Derogation warning
+    if (isDerog) {
+      doc.setFillColor(253,240,216); doc.roundedRect(M,y,W-M*2,12,2,2,"F");
+      doc.setFontSize(8); doc.setFont("helvetica","bold"); doc.setTextColor(154,100,16);
+      doc.text("⚠  DÉROGATION PPSO — Justification : " + (why||"—"), M+4, y+8, {maxWidth:W-M*2-8});
+      y+=16; doc.setTextColor(20,33,61);
+    }
+    // Agent / date
+    doc.setFont("helvetica","normal"); doc.setFontSize(9);
+    doc.text("Agent : " + (who||"—") + "     Date : " + fmtD(nowISO()) + "     Heure : " + new Date().toLocaleTimeString("fr"), M, y); y+=7;
+    if (why&&!isDerog) doc.text("Obs. : " + why, M, y), y+=7;
+    // Signature area
+    y+=4;
+    doc.setDrawColor(200,210,220); doc.line(M,y,W/2-4,y); doc.line(W/2+4,y,W-M,y);
+    doc.setFontSize(8); doc.text("Signature de l'agent préleveur",M,y+5);
+    doc.text("Signature du superviseur",W/2+4,y+5);
+    y+=12;
+    // Footer
+    doc.setFillColor(0,38,100); doc.rect(0,doc.internal.pageSize.height-8,W,8,"F");
+    doc.setTextColor(255,255,255); doc.setFontSize(7); doc.setFont("helvetica","normal");
+    doc.text("INSAPT LaBiEp — Conforme SOP R-3 §4.3 PPSO/FEFO — Généré le " + new Date().toLocaleString("fr"), W/2, doc.internal.pageSize.height-3, {align:"center"});
+    doc.save("BonPrelevement_" + (r.lot||r.name).replace(/\s+/g,"_") + "_" + nowISO() + ".pdf");
+    toast("Bon de prélèvement PDF généré","ok");
+  }
+  function loadJsPDF(cb) {
+    if (window.jspdf) { cb(); return; }
+    var s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    s.onload = cb; document.head.appendChild(s);
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     5. SUPER-ADMIN DASHBOARD
+  ────────────────────────────────────────────────────────────── */
+  function renderAdminDash() {
+    var g=function(b){return DB.filter(function(r){return band(r)===b;});};
+    var exp=g("exp"),d30=g("d30"),d90=g("d90"),nod=g("nodate"),zero=DB.filter(function(r){return band(r)!=="na"&&qty(r)===0;});
+    var perish=DB.filter(function(r){return band(r)!=="na";});
+    var lossRate=perish.length?(exp.length/perish.length*100):0;
+    // FEFO compliance from moves
+    var moves_out=MOVES.filter(function(m){return m.kind==="out";});
+    var fefo_total=moves_out.length, fefo_ok=moves_out.filter(function(m){return m.fefo_ok==="ok";}).length;
+    var fefo_rate=fefo_total?Math.round(fefo_ok/fefo_total*100):100;
+    // By user stats
+    var byUser={};
+    MOVES.forEach(function(m){
+      var u=m.user||m.who||"inconnu";
+      if(!byUser[u])byUser[u]={total:0,ok:0,derog:0,scrap:0,recv:0};
+      if(m.kind==="out"){byUser[u].total++;if(m.fefo_ok==="ok")byUser[u].ok++;else byUser[u].derog++;}
+      if(m.kind==="scrap")byUser[u].scrap++;
+      if(m.kind==="in")byUser[u].recv++;
+    });
+    var h='<div class="kpis">' +
+      kpi("crit",exp.length,"Lots périmés","Certificat de destruction requis") +
+      kpi("danger",d30.length,"Alerte ≤ 30 j","Utilisation ou transfert immédiat") +
+      kpi("warn",d90.length,"Alerte ≤ 90 j","Double étiquetage SOP R-3 §4.3") +
+      kpi("",nod.length,"Dates absentes","Non-conformité de traçabilité") +
+      kpi(zero.length?"danger":"ok",zero.length,"Stock épuisé","Réapprovisionner") +
+      kpi(lossRate<=CFG.lossTarget?"ok":"crit",lossRate.toFixed(1)+" %","Taux de péremption","Cible < "+CFG.lossTarget+" %") +
+      kpi(fefo_rate>=95?"ok":"warn",fefo_rate+" %","Conformité FEFO","Sur "+fefo_total+" sorties enregistrées") +
+      kpi("",MOVES.length,"Total mouvements","Journal complet") +
+      '</div>';
+    // Urgent alerts
+    h+='<div class="card"><div class="card-h"><h3>🔴 Action immédiate requise</h3>' +
+      '<button class="btn btn-sm" onclick="exportRows(\'urgents\',window._urgents||[])">CSV</button></div>' +
+      '<div class="card-b flush" id="adminAlerts"></div></div>';
+    // FEFO compliance by user
+    h+='<div class="card"><div class="card-h"><h3>Conformité FEFO par agent' +
+      '<small>Basé sur le journal des sorties enregistrées</small></h3>' +
+      '<button class="btn btn-sm" id="csvFefoUser">Exporter CSV</button></div><div class="card-b">';
+    var uKeys=Object.keys(byUser);
+    if(!uKeys.length){h+='<div class="empty"><span class="ic">📋</span><b>Aucune sortie enregistrée</b>Les agents doivent utiliser le module Sortie de stock.</div>';}
+    else{
+      h+='<div class="tbl-scroll"><table class="tbl"><thead><tr><th>Agent</th><th class="num">Sorties</th>' +
+        '<th class="num">FEFO OK</th><th class="num">Dérogations</th><th class="num">Mises au rebut</th>' +
+        '<th class="num">Réceptions</th><th class="num">Conformité</th><th>Alerte</th></tr></thead><tbody>';
+      uKeys.sort(function(a,b){var ra=byUser[a],rb=byUser[b];return (rb.total-rb.ok)-(ra.total-ra.ok);}).forEach(function(u){
+        var s=byUser[u]; var rate=s.total?Math.round(s.ok/s.total*100):100;
+        h+='<tr><td class="t-name">'+esc(u)+'</td><td class="num">'+s.total+'</td>' +
+          '<td class="num" style="color:var(--ok)">'+s.ok+'</td>' +
+          '<td class="num" style="color:var(--warn)">'+s.derog+'</td>' +
+          '<td class="num" style="color:var(--danger)">'+s.scrap+'</td>' +
+          '<td class="num">'+s.recv+'</td>' +
+          '<td class="num"><b style="color:var('+(rate>=95?"--ok":rate>=80?"--warn":"--danger")+')">'+rate+'%</b></td>' +
+          '<td>'+(rate<80?'<span class="pill d30">Formation requise</span>':rate<95?'<span class="pill d90">À surveiller</span>':'<span class="pill ok">Conforme</span>')+'</td></tr>';
+      });
+      h+='</tbody></table></div>';
+    }
+    h+='</div></div>';
+    // Expiry timeline
+    h+='<div class="card"><div class="card-h"><h3>Lots périmés — Détail' +
+      '<small>Action : Certificat de Destruction R-3.B + rapport des causes (SOP R-3.D si taux > '+CFG.lossTarget+' %)</small></h3>' +
+      '<button class="btn btn-sm" onclick="exportRows(\'expired\',window.DB.filter(function(r){return window._band(r)===\"exp\";}))">Exporter CSV</button></div>' +
+      '<div class="card-b flush" id="adminExpDetail"></div></div>';
+    // Inventory confirmation
+    h+='<div class="card"><div class="card-h"><h3>⬛ Confirmation d\'inventaire' +
+      '<small>Cochez chaque emplacement contrôlé lors de l\'inventaire mensuel physique (formulaire R-3.A)</small></h3>' +
+      '<button class="btn btn-sm" id="btnConfirmInv">Générer rapport d\'inventaire</button></div>' +
+      '<div class="card-b" id="invConfirm"></div></div>';
+    $("#v-admindash").innerHTML = h;
+    // Populate urgent alerts
+    var urgents=exp.concat(d30).sort(function(a,b){return (daysTo(a.date_expiry)||0)-(daysTo(b.date_expiry)||0);});
+    window._urgents=urgents; window._band=band;
+    $("#adminAlerts").innerHTML=alertTable(urgents,"Aucune alerte urgente — inventaire conforme.",true);
+    // Populate expired detail
+    $("#adminExpDetail").innerHTML=alertTable(exp,"Aucun lot périmé.",true);
+    // Inventory checklist
+    var locList=countBy("location").slice(0,25);
+    var chk='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px">';
+    locList.forEach(function(p,i){
+      chk+='<label style="display:flex;align-items:center;gap:9px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:13px">' +
+        '<input type="checkbox" id="ic_'+i+'" style="width:auto"> <span><b>'+esc(p[0])+'</b> — '+p[1]+' lots</span></label>';
+    });
+    chk+='</div>';
+    $("#invConfirm").innerHTML=chk;
+    $("#btnConfirmInv").onclick=function(){
+      var done=locList.filter(function(p,i){return document.getElementById("ic_"+i)&&document.getElementById("ic_"+i).checked;});
+      var total=locList.length;
+      var note="Inventaire partiel ("+done.length+"/"+total+" emplacements contrôlés) — "+new Date().toLocaleString("fr");
+      if(done.length===total) note="Inventaire complet ("+total+" emplacements) — "+new Date().toLocaleString("fr");
+      logMove("audit","SYSTEM","Confirmation inventaire physique",null,note,CURRENT_USER?CURRENT_USER.name:"admin");
+      pushRemote("move",{move:{ts:new Date().toISOString(),kind:"audit",id:"SYS",name:"Inventaire physique",qty:null,note:note,who:CURRENT_USER?CURRENT_USER.name:"",lot:"",loc:"",user:CURRENT_USER?CURRENT_USER.user:""}});
+      save(); toast(note,"ok");
+    };
+    // FEFO user CSV
+    if($("#csvFefoUser")) $("#csvFefoUser").onclick=function(){
+      downloadCSV("fefo_par_agent",
+        ["Agent","Sorties","FEFO OK","Dérogations","Mises au rebut","Réceptions","Conformité %"],
+        Object.keys(byUser).map(function(u){var s=byUser[u];var rate=s.total?Math.round(s.ok/s.total*100):100;
+          return[u,s.total,s.ok,s.derog,s.scrap,s.recv,rate];}));
+    };
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     6. USER MANAGEMENT (superadmin only)
+  ────────────────────────────────────────────────────────────── */
+  var GS_USERS = [];  /* cache from ls_users */
+  function renderUsers() {
+    var h='<div class="note"><b>Gestion des comptes opérateurs</b>Les comptes créés ici permettent au personnel du labo de se connecter ' +
+      'et d\'enregistrer des mouvements de stock. Rôles : <b>admin</b> (rapports + paramètres) · <b>operator</b> (opérations quotidiennes).</div>';
+    h+='<div class="card"><div class="card-h"><h3>Comptes actifs</h3>' +
+      '<button class="btn btn-sm" id="btnRefreshUsers">↻ Actualiser</button>' +
+      '<button class="btn btn-gold btn-sm" id="btnNewUser">+ Nouveau compte</button></div>' +
+      '<div class="card-b flush" id="usersList"><div class="empty"><span class="ic">⟳</span><b>Chargement…</b></div></div></div>';
+    h+='<div class="card"><div class="card-h"><h3>Comptes système (intégrés)</h3></div><div class="card-b">' +
+      '<div class="tbl-scroll"><table class="tbl"><thead><tr><th>Identifiant</th><th>Nom</th><th>Rôle</th><th>Statut</th></tr></thead><tbody>';
+    BUILT_IN.forEach(function(a){h+='<tr><td class="mono">'+esc(a.user)+'</td><td>'+esc(a.name)+'</td><td><span class="pill na">'+esc(a.role)+'</span></td><td><span class="pill ok">Intégré</span></td></tr>';});
+    h+='</tbody></table></div><p style="font-size:12px;color:var(--slate);margin:10px 0 0">Ces comptes sont définis dans le code source et ne peuvent pas être modifiés depuis l\'interface.</p></div></div>';
+    $("#v-users").innerHTML=h;
+    $("#btnRefreshUsers").onclick=loadUsers;
+    $("#btnNewUser").onclick=function(){openUserModal(null);};
+    loadUsers();
+  }
+  function loadUsers(){
+    if(!$("#usersList"))return;
+    gsCall("ls_users")
+      .then(function(j){
+        GS_USERS=j.users||[];
+        renderUserTable();
+      })
+      .catch(function(){ $("#usersList").innerHTML='<div class="note danger"><b>Hors ligne</b>Impossible de charger les comptes depuis Google Sheets.</div>'; });
+  }
+  function renderUserTable(){
+    if(!GS_USERS.length){
+      $("#usersList").innerHTML='<div class="empty"><span class="ic">👥</span><b>Aucun compte opérateur créé</b>Cliquez sur "+ Nouveau compte" pour en ajouter un.</div>';
+      return;
+    }
+    var h='<div class="tbl-scroll"><table class="tbl"><thead><tr><th>Identifiant</th><th>Nom</th>' +
+      '<th>Rôle</th><th>Section</th><th>Créé le</th><th>Statut</th><th></th></tr></thead><tbody>';
+    GS_USERS.forEach(function(u){
+      h+='<tr><td class="mono">'+esc(u.user)+'</td><td class="t-name">'+esc(u.name)+'</td>' +
+        '<td><span class="pill '+(u.role==="admin"?"info":"ok")+'">'+esc(u.role)+'</span></td>' +
+        '<td>'+esc(u.section||"—")+'</td><td class="mono">'+esc((u.created||"").slice(0,10))+'</td>' +
+        '<td><span class="pill '+(u.active!=="false"?"ok":"d30")+'">'+(u.active!=="false"?"Actif":"Désactivé")+'</span></td>' +
+        '<td style="white-space:nowrap">' +
+        '<button class="btn btn-ghost btn-xs" data-uname="'+esc(u.user)+'" data-uact="edit">Modifier</button> ' +
+        '<button class="btn btn-ghost btn-xs" data-uname="'+esc(u.user)+'" data-uact="toggle">'+(u.active!=="false"?"Désactiver":"Activer")+'</button></td></tr>';
+    });
+    h+='</tbody></table></div>';
+    $("#usersList").innerHTML=h;
+    $$("#usersList [data-uname]").forEach(function(b){
+      b.onclick=function(){
+        var u=GS_USERS.filter(function(x){return x.user===b.dataset.uname;})[0];
+        if(!u)return;
+        if(b.dataset.uact==="edit") openUserModal(u);
+        else toggleUser(u);
+      };
+    });
+  }
+  function openUserModal(u){
+    var h='<div class="modal-h"><h3>'+(u?"Modifier le compte":"Nouveau compte opérateur")+'</h3>' +
+      '<button class="modal-x" data-close type="button">×</button></div>' +
+      '<form id="userForm" style="display:contents">' +
+      '<div class="modal-b">' +
+      '<div class="grid2">' +
+      '<div class="field"><label>Identifiant *</label><input id="uu_user" required placeholder="ex: jean.dupont" value="'+esc(u?u.user:"")+'"></div>' +
+      '<div class="field"><label>Mot de passe '+(u?"(laisser vide pour ne pas changer)":"*")+'</label><input id="uu_pass" type="password" '+(u?"":"required")+'></div>' +
+      '</div>' +
+      '<div class="grid2">' +
+      '<div class="field"><label>Nom complet *</label><input id="uu_name" required placeholder="Prénom Nom" value="'+esc(u?u.name:"")+'"></div>' +
+      '<div class="field"><label>Section / service</label><input id="uu_section" placeholder="ex: Biologie moléculaire" value="'+esc(u?u.section||"":"")+'"></div>' +
+      '</div>' +
+      '<div class="field"><label>Rôle</label><select id="uu_role">' +
+      '<option value="operator"'+(u&&u.role==="operator"?" selected":"")+'>Opérateur (accès quotidien)</option>' +
+      '<option value="admin"'+(u&&u.role==="admin"?" selected":"")+'>Admin (rapports + paramètres)</option>' +
+      '</select></div>' +
+      '<div class="note"><b>Accès opérateur :</b> Inventaire, Sortie de stock, Réception, Commandes<br>' +
+      '<b>Accès admin :</b> tout ce qui précède + Rapports, Analyse, Paramètres</div>' +
+      '</div>' +
+      '<div class="modal-f"><button class="btn btn-ghost" type="button" data-close>Annuler</button>' +
+      '<button class="btn" type="submit">'+(u?"Enregistrer":"Créer le compte")+'</button></div></form>';
+    var m=$("#mGeneric"); m.innerHTML=h; m.classList.add("on");
+    $$("[data-close]",m).forEach(function(b){b.onclick=function(){m.classList.remove("on");};});
+    $("#userForm").onsubmit=function(ev){
+      ev.preventDefault();
+      var nu={user:$("#uu_user").value.trim().toLowerCase(), name:$("#uu_name").value.trim(),
+               section:$("#uu_section").value.trim(), role:$("#uu_role").value,
+               active:"true", created:u?(u.created||nowISO()):nowISO()};
+      var pass=$("#uu_pass").value;
+      if(!u&&!pass){toast("Mot de passe requis pour un nouveau compte","err");return;}
+      if(pass) nu.pass=pass;
+      gsCall("ls_user_upsert",{user_rec:nu})
+        .then(function(j){
+          if(!j.ok) throw new Error(j.error||"Erreur");
+          m.classList.remove("on"); toast((u?"Compte mis à jour : ":"Compte créé : ")+nu.name,"ok");
+          loadUsers();
+        })
+        .catch(function(e){toast("Erreur : "+e.message,"err");});
+    };
+  }
+  function toggleUser(u){
+    if(!confirm((u.active!=="false"?"Désactiver":"Activer")+" le compte "+u.name+" ?"))return;
+    var nu=Object.assign({},u,{active:u.active==="false"?"true":"false"});
+    gsCall("ls_user_upsert",{user_rec:nu})
+      .then(function(j){if(!j.ok)throw new Error(j.error||"Erreur");toast("Compte mis à jour","ok");loadUsers();})
+      .catch(function(e){toast("Erreur : "+e.message,"err");});
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     7. AUDIT REPORT
+  ────────────────────────────────────────────────────────────── */
+  function renderAudit() {
+    var h='<div class="tabs" id="auditTab" data-t="fefo">' +
+      '<button data-t="fefo" class="on">Conformité FEFO</button>' +
+      '<button data-t="moves">Journal complet</button>' +
+      '<button data-t="losses">Analyse des pertes</button>' +
+      '</div><div id="auditBody"></div>';
+    $("#v-audit").innerHTML=h;
+    $$("#auditTab button").forEach(function(b){ b.onclick=function(){
+      $$("#auditTab button").forEach(function(x){x.classList.remove("on");});
+      b.classList.add("on"); $("#auditTab").dataset.t=b.dataset.t; renderAuditTab();
+    };});
+    renderAuditTab();
+  }
+  function renderAuditTab(){
+    var t=($("#auditTab")||{}).dataset&&$("#auditTab").dataset.t||"fefo";
+    if(t==="fefo") renderAuditFEFO();
+    else if(t==="moves") renderAuditMoves();
+    else renderAuditLosses();
+  }
+  function renderAuditFEFO(){
+    var out=MOVES.filter(function(m){return m.kind==="out";});
+    var byUser={}, byDate={};
+    out.forEach(function(m){
+      var u=m.user||m.who||"inconnu";
+      if(!byUser[u])byUser[u]={name:u,total:0,ok:0,derog:0,items:[]};
+      byUser[u].total++;
+      var isOk=(m.fefo_ok==="ok"||!m.fefo_ok&&!m.note);
+      if(isOk)byUser[u].ok++; else byUser[u].derog++;
+      byUser[u].items.push(m);
+      var d=(m.ts||"").slice(0,7);
+      if(!byDate[d])byDate[d]={total:0,ok:0};
+      byDate[d].total++; if(isOk)byDate[d].ok++;
+    });
+    var h='<div class="note"><b>Rapport de conformité FEFO</b>Basé sur '+out.length+' sortie(s) enregistrée(s). ' +
+      'Les sorties sans le champ <code>fefo_ok</code> (avant la mise à jour) sont supposées conformes.</div>';
+    h+='<div class="card"><div class="card-h"><h3>Par agent</h3>' +
+      '<button class="btn btn-sm" id="csvAuditFefo">Exporter CSV</button></div><div class="card-b flush">';
+    if(!Object.keys(byUser).length){
+      h+='<div class="empty"><span class="ic">📋</span><b>Aucune sortie enregistrée</b></div>';
+    } else {
+      h+='<div class="tbl-scroll"><table class="tbl"><thead><tr><th>Agent</th><th class="num">Sorties</th>' +
+        '<th class="num">Conformes</th><th class="num">Dérogations</th><th class="num">Taux</th>' +
+        '<th>Évaluation</th></tr></thead><tbody>';
+      Object.values(byUser).sort(function(a,b){return(b.derog-a.derog);}).forEach(function(u){
+        var rate=u.total?Math.round(u.ok/u.total*100):100;
+        h+='<tr><td class="t-name">'+esc(u.name)+'</td><td class="num">'+u.total+'</td>' +
+          '<td class="num" style="color:var(--ok)">'+u.ok+'</td>' +
+          '<td class="num" style="color:var(--warn)">'+u.derog+'</td>' +
+          '<td class="num"><b>'+rate+'%</b></td>' +
+          '<td>'+(rate>=95?'<span class="pill ok">Excellent</span>':rate>=80?'<span class="pill d90">À améliorer</span>':'<span class="pill d30">Formation requise</span>')+'</td></tr>';
+      });
+      h+='</tbody></table></div>';
+    }
+    h+='</div></div>';
+    // Monthly trend
+    var months=Object.keys(byDate).sort();
+    if(months.length>1){
+      h+='<div class="card"><div class="card-h"><h3>Tendance mensuelle FEFO</h3></div><div class="card-b">';
+      months.forEach(function(d){
+        var r=byDate[d]; var rate=r.total?Math.round(r.ok/r.total*100):100;
+        h+=barRow(d, r.ok, r.total, rate>=95?"ok":rate>=80?"warn":"crit");
+        h+='<div style="font-size:11px;color:var(--slate);margin:-5px 0 8px 214px">'+rate+'% conforme ('+r.ok+'/'+r.total+')</div>';
+      });
+      h+='</div></div>';
+    }
+    $("#auditBody").innerHTML=h;
+    if($("#csvAuditFefo")) $("#csvAuditFefo").onclick=function(){
+      downloadCSV("audit_fefo",["Agent","Sorties","Conformes","Dérogations","Taux %"],
+        Object.values(byUser).map(function(u){var r=u.total?Math.round(u.ok/u.total*100):100;return[u.name,u.total,u.ok,u.derog,r];}));
+    };
+  }
+  function renderAuditMoves(){
+    var filter_kind=$("#auditMoveKind")?$("#auditMoveKind").value:"";
+    var filter_user=$("#auditMoveUser")?$("#auditMoveUser").value:"";
+    var filtered2=MOVES.filter(function(m){
+      if(filter_kind&&m.kind!==filter_kind)return false;
+      if(filter_user&&(m.user||m.who||"").toLowerCase().indexOf(filter_user.toLowerCase())<0)return false;
+      return true;
+    });
+    var K={in:"Entrée",out:"Sortie",scrap:"Rebut",edit:"Modification",del:"Suppression",audit:"Audit"};
+    var P={in:"ok",out:"info",scrap:"exp",edit:"nodate",del:"d30",audit:"na"};
+    var h='<div class="card"><div class="card-h"><h3>Journal des mouvements<small>'+filtered2.length+' enregistrement(s)</small></h3>' +
+      '<button class="btn btn-sm" id="csvAllMoves">Exporter CSV</button></div><div class="card-b">' +
+      '<div class="filters" style="margin-bottom:14px">' +
+      '<div class="field"><label>Type</label><select id="auditMoveKind">' +
+      '<option value="">Tous</option><option value="in">Entrées</option><option value="out">Sorties</option>' +
+      '<option value="scrap">Rebuts</option><option value="edit">Modifications</option>' +
+      '<option value="del">Suppressions</option><option value="audit">Audits</option>' +
+      '</select></div>' +
+      '<div class="field"><label>Agent</label><input id="auditMoveUser" placeholder="Nom ou identifiant"></div>' +
+      '</div>';
+    if(!filtered2.length){h+='<div class="empty"><span class="ic">📋</span><b>Aucun mouvement</b></div>';}
+    else{
+      h+='<div class="tbl-scroll"><table class="tbl"><thead><tr><th>Date/Heure</th><th>Type</th><th>Article</th>' +
+        '<th>Lot</th><th class="num">Qté</th><th>Agent</th><th>Emplacement</th><th>FEFO</th><th>Observation</th></tr></thead><tbody>';
+      filtered2.slice(0,200).forEach(function(m){
+        h+='<tr><td class="mono">'+esc((m.ts||"").replace("T"," ").slice(0,16))+'</td>' +
+          '<td><span class="pill '+(P[m.kind]||"info")+'">'+(K[m.kind]||m.kind)+'</span></td>' +
+          '<td class="t-name">'+esc(m.name)+'</td>' +
+          '<td class="mono">'+esc(m.lot||"—")+'</td>' +
+          '<td class="num">'+(m.qty==null?"—":m.qty)+'</td>' +
+          '<td>'+esc(m.user||m.who||"—")+'</td>' +
+          '<td>'+esc(m.loc||"—")+'</td>' +
+          '<td>'+(m.kind==="out"?'<span class="pill '+(m.fefo_ok==="derogation"?"d90":"ok")+'">'+(m.fefo_ok==="derogation"?"Dérogation":"OK")+'</span>':"—")+'</td>' +
+          '<td>'+esc(m.note||"")+'</td></tr>';
+      });
+      h+='</tbody></table></div>';
+      if(filtered2.length>200)h+='<div class="count-note">200 premiers sur '+filtered2.length+'.</div>';
+    }
+    h+='</div></div>';
+    $("#auditBody").innerHTML=h;
+    $("#auditMoveKind").onchange=function(){ renderAuditMoves(); };
+    $("#auditMoveUser").oninput=function(){ renderAuditMoves(); };
+    if($("#csvAllMoves")) $("#csvAllMoves").onclick=function(){
+      downloadCSV("journal_complet",
+        ["Horodatage","Type","Article","Lot","Quantité","Agent","Emplacement","FEFO","Observation"],
+        filtered2.map(function(m){return[(m.ts||"").replace("T"," ").slice(0,19),K[m.kind]||m.kind,m.name,m.lot||"",m.qty,m.user||m.who||"",m.loc||"",m.kind==="out"?(m.fefo_ok==="derogation"?"Dérogation":"OK"):"",m.note||""];}));
+    };
+  }
+  function renderAuditLosses(){
+    var perish=DB.filter(function(r){return band(r)!=="na";});
+    var exp=DB.filter(function(r){return band(r)==="exp";});
+    var scraps=MOVES.filter(function(m){return m.kind==="scrap";});
+    var lossRate=perish.length?(exp.length/perish.length*100):0;
+    var h='<div class="kpis">' +
+      kpi(lossRate<=CFG.lossTarget?"ok":"crit",exp.length,"Lots périmés en stock","Pertes en stock actuel") +
+      kpi("",scraps.length,"Lots mis au rebut","Via le module Sortie — total historique") +
+      kpi(lossRate<=CFG.lossTarget?"ok":"crit",lossRate.toFixed(1)+" %","Taux de péremption (stock)","Cible < "+CFG.lossTarget+" % — SOP R-3 §6") +
+      '</div>';
+    // Expired lots details
+    h+='<div class="card"><div class="card-h"><h3>Lots périmés en stock — Analyse des causes</h3>' +
+      '<button class="btn btn-sm" onclick="exportRows(\'pertes\',DB.filter(function(r){return _band(r)===\"exp\";}))">Exporter CSV</button></div>' +
+      '<div class="card-b flush">'+alertTable(exp,"Aucune perte en stock actuel.",true)+'</div></div>';
+    // Scraps from moves
+    h+='<div class="card"><div class="card-h"><h3>Historique des mises au rebut</h3>' +
+      '<button class="btn btn-sm" id="csvScraps">Exporter CSV</button></div><div class="card-b flush">';
+    if(!scraps.length){h+='<div class="empty"><span class="ic">✓</span><b>Aucune mise au rebut enregistrée</b></div>';}
+    else{
+      h+='<div class="tbl-scroll"><table class="tbl"><thead><tr><th>Date</th><th>Article</th><th>Lot</th><th class="num">Qté</th><th>Agent</th><th>Motif</th></tr></thead><tbody>';
+      scraps.forEach(function(m){
+        h+='<tr><td class="mono">'+esc((m.ts||"").slice(0,10))+'</td><td class="t-name">'+esc(m.name)+'</td>' +
+          '<td class="mono">'+esc(m.lot||"—")+'</td><td class="num">'+esc(m.qty||"—")+'</td>' +
+          '<td>'+esc(m.user||m.who||"—")+'</td><td>'+esc(m.note||"—")+'</td></tr>';
+      });
+      h+='</tbody></table></div>';
+    }
+    h+='</div></div>';
+    $("#auditBody").innerHTML=h;
+    window._band=band;
+    if($("#csvScraps"))$("#csvScraps").onclick=function(){
+      downloadCSV("rebuts",["Date","Article","Lot","Quantité","Agent","Motif"],
+        scraps.map(function(m){return[(m.ts||"").slice(0,10),m.name,m.lot||"",m.qty||"",m.user||m.who||"",m.note||""];}));
+    };
+  }
+
+
+
 })();

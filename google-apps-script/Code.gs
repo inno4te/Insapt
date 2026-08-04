@@ -38,6 +38,9 @@
  *   POST {action:"ls_delete", key, id}        -> {ok:true}
  *   GET  ?action=ls_moves&key=...             -> {ok:true, moves:[...]}
  *   POST {action:"ls_move",   key, move}      -> {ok:true}
+ *   GET  ?action=ls_users&key=...             -> {ok:true, users:[...]}
+ *   POST {action:"ls_user_upsert", key, user_rec} -> {ok:true}
+ *   POST {action:"ls_auth",  user, pass}     -> {ok, role, name}  (no key needed)
  * ------------------------------------------------------------
  */
 
@@ -70,6 +73,7 @@ function doGet(e) {
   if (p.action === 'el_settings')   return json({ ok:true, settings:readSettings() });
   if (p.action === 'ls_list')       return json({ ok:true, records:lsList() });
   if (p.action === 'ls_moves')      return json({ ok:true, moves:lsMoves() });
+  if (p.action === 'ls_users')      return json({ ok:true, users:lsListUsers() });
   if (p.action === 'el_admin_list') {
     if (!isAdmin(p.admin)) return json({ ok:false, error:'admin auth' });
     return json({ ok:true, learners:listLearners() });
@@ -95,6 +99,8 @@ function doPost(e) {
   if (body.action === 'ls_upsert' && body.record)  { lsUpsert(body.record); return json({ ok:true, id:body.record.id }); }
   if (body.action === 'ls_delete' && body.id)      { lsDelete(body.id); return json({ ok:true }); }
   if (body.action === 'ls_move'   && body.move)    { lsMove(body.move); return json({ ok:true }); }
+  if (body.action === 'ls_user_upsert' && body.user_rec) { lsUpsertUser(body.user_rec); return json({ ok:true }); }
+  if (body.action === 'ls_auth')   { return json(lsAuth(body.user, body.pass)); }
 
   if (body.action === 'el_login')      return json(elLogin(body.name, body.section));
   if (body.action === 'el_save')       return json(elSave(body));
@@ -423,6 +429,91 @@ function lsMoves() {
   return out.reverse();
 }
 
+
+/* ==================== LAB STOCK — USER MANAGEMENT ====================
+   Tab: LabUsers
+   Columns: user, pass, name, section, role, active, created, updated
+   Passwords are stored as SHA-256 hex to avoid plain-text in sheet.
+   For a simple deployment SHA-256 is implemented in pure GS below.
+================================================================ */
+
+var LS_USER_COLS = ['user','pass','name','section','role','active','created','updated'];
+
+function getLabUserSheet() {
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName('LabUsers');
+  if (!sh) {
+    sh = ss.insertSheet('LabUsers');
+    sh.appendRow(LS_USER_COLS);
+    sh.getRange(1,1,1,LS_USER_COLS.length).setFontWeight('bold').setBackground('#eef3fb');
+    sh.setFrozenRows(1);
+    /* Protect password column (col 2) from accidental view */
+    sh.getRange(1,2,1000,1).setNumberFormat('@');
+  }
+  return sh;
+}
+
+function lsListUsers() {
+  var sh = getLabUserSheet();
+  var vals = sh.getDataRange().getValues();
+  if (vals.length < 2) return [];
+  var hdr = vals[0];
+  return vals.slice(1).filter(function(r){ return r[0]; }).map(function(r){
+    var o = {};
+    hdr.forEach(function(k,i){ o[k] = lsCell(r[i]); });
+    delete o.pass;  /* never return password */
+    return o;
+  });
+}
+
+function lsUpsertUser(rec) {
+  var sh = getLabUserSheet();
+  var vals = sh.getDataRange().getValues();
+  var rowIdx = -1;
+  for (var i = 1; i < vals.length; i++) {
+    if (String(vals[i][0]).toLowerCase() === String(rec.user).toLowerCase()) { rowIdx = i+1; break; }
+  }
+  /* Hash password if provided */
+  if (rec.pass) rec.pass = lsHashPass(rec.pass);
+  else if (rowIdx > 0) {
+    /* Keep existing password */
+    rec.pass = String(vals[rowIdx-1][1]);
+  }
+  rec.updated = new Date().toISOString().slice(0,10);
+  if (!rec.created) rec.created = rec.updated;
+  var row = LS_USER_COLS.map(function(k){ return rec[k] !== undefined ? rec[k] : ''; });
+  if (rowIdx > 0) sh.getRange(rowIdx, 1, 1, LS_USER_COLS.length).setValues([row]);
+  else sh.appendRow(row);
+}
+
+/* Validate credentials — called by ls_auth endpoint (no shared key needed).
+   Rate limiting: not implemented here; rely on GS execution limits. */
+function lsAuth(user, pass) {
+  if (!user || !pass) return { ok: false, error: 'Missing credentials' };
+  var sh = getLabUserSheet();
+  var vals = sh.getDataRange().getValues();
+  if (vals.length < 2) return { ok: false, error: 'No users' };
+  var hdr = vals[0];
+  var col = function(n){ return hdr.indexOf(n); };
+  var hash = lsHashPass(pass);
+  for (var i = 1; i < vals.length; i++) {
+    var u = String(vals[i][col('user')]).toLowerCase();
+    if (u !== String(user).toLowerCase()) continue;
+    if (vals[i][col('active')] === 'false') return { ok:false, error:'Compte désactivé' };
+    var stored = String(vals[i][col('pass')]);
+    if (stored !== hash) return { ok:false, error:'Mot de passe incorrect' };
+    return { ok:true, role: String(vals[i][col('role')])||'operator',
+             name: String(vals[i][col('name')])||user };
+  }
+  return { ok:false, error:'Utilisateur introuvable' };
+}
+
+/* Simple SHA-256 via GS Utilities.computeDigest */
+function lsHashPass(pass) {
+  var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(pass), Utilities.Charset.UTF_8);
+  return bytes.map(function(b){ return ('0'+(b & 0xFF).toString(16)).slice(-2); }).join('');
+}
+
 /* ==================== UTIL ==================== */
 
 function json(obj) {
@@ -431,6 +522,6 @@ function json(obj) {
 
 /* Run once from the editor to create all tabs and grant scopes. */
 function setup() {
-  getSheet(); getCodeSheet(); getELSheet(); getELSetSheet(); getLabSheet(); getLabMoveSheet();
+  getSheet(); getCodeSheet(); getELSheet(); getELSetSheet(); getLabSheet(); getLabMoveSheet(); getLabUserSheet();
   Logger.log('Spreadsheet ready: ' + getSpreadsheet().getUrl());
 }
