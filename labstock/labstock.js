@@ -230,32 +230,67 @@
     $$(".role-admin").forEach(function(el){ el.style.display = (r === "superadmin" || r === "admin") ? "" : "none"; });
   }
 
-  /* On login: if a GS URL is configured, pull the live database
-     so all admins share the same up-to-date source of truth.
-     If offline, work from localStorage and queue mutations. */
+  /* ═══════════════════════════════════════════════════════════════
+     autoConnect — MERGE STRATEGY (never wipes data)
+     ─────────────────────────────────────────────────────────────
+     On login:
+       1. Pull GS records
+       2. Merge with local:  GS wins per-record (last-write-wins)
+          BUT local-only records (not in GS by id) are KEPT locally
+          and immediately pushed up to GS so nothing is lost.
+       3. Result DB = union of GS + local-only records
+     Additions (online or offline) always ADD to the union.
+     lsSeed (full-replace) is NEVER called automatically.
+  ═══════════════════════════════════════════════════════════════ */
   function autoConnect() {
     if (!CFG.gsUrl) { setSyncIdle("Stockage local"); return; }
     setSyncBusy("Connexion en cours…");
     gsCall("ls_list")
       .then(function (j) {
-        if (!j || !j.ok || !j.records) throw new Error("Réponse inattendue");
-        if (j.records.length) {
-          DB = j.records; save();
-          buildFilters(); render();
-          toast("Base rechargée depuis Google — " + DB.length + " lots", "ok");
-        }
+        if (!j || !j.ok) throw new Error("Réponse inattendue");
         ONLINE = true;
-        setSyncBusy("Vérification des mouvements…");
+
+        var gsRecords = j.records || [];
+        if (gsRecords.length > 0) {
+          /* Build a map of GS records by id */
+          var gsMap = {};
+          gsRecords.forEach(function (r) { gsMap[r.id] = r; });
+
+          /* Local-only: in local DB but NOT in GS → push up */
+          var localOnly = DB.filter(function (r) { return !gsMap[r.id]; });
+          if (localOnly.length) {
+            localOnly.forEach(function (r) {
+              pushRemote("upsert", { record: r });
+            });
+            toast(localOnly.length + " lot(s) local/hors-ligne poussé(s) vers Google", "ok");
+          }
+
+          /* Merge: start from GS, keep local-only additions */
+          DB = gsRecords.concat(localOnly);
+          save(); buildFilters(); render();
+
+          var msg = "En ligne — " + DB.length + " lots";
+          if (localOnly.length) msg += " (" + localOnly.length + " locaux synchronisés)";
+          setSyncBusy(msg);
+        }
+
         return gsCall("ls_moves");
       })
       .then(function (jm) {
-        if (jm && jm.ok && jm.moves && jm.moves.length > MOVES.length) {
-          MOVES = jm.moves; save();
+        /* Merge moves: keep all local moves, add any GS-only ones */
+        if (jm && jm.ok && jm.moves && jm.moves.length) {
+          var localTs = new Set(MOVES.map(function(m){ return m.ts + m.id; }));
+          var newMoves = jm.moves.filter(function(m){ return !localTs.has(m.ts + m.id); });
+          if (newMoves.length) {
+            MOVES = MOVES.concat(newMoves)
+              .sort(function(a,b){ return (b.ts||"").localeCompare(a.ts||""); });
+            save();
+          }
         }
         setSync(true, "En ligne — Google Sheets", QUEUE.length || null);
         if (QUEUE.length) flushQueue();
       })
-      .catch(function (err) {
+      .catch(function () {
         setSync(false, "Hors ligne — stockage local");
         if (QUEUE.length) toast(QUEUE.length + " modification(s) en attente de synchronisation", "warn");
       });
@@ -376,6 +411,11 @@
   function locs() { return countBy("location").map(function (p) { return p[0]; }); }
 
   /* ================= INVENTORY ================= */
+  function populateRecvLoc() {
+    var dl = document.getElementById("recvLocSugg"); if (!dl) return;
+    var locs = Object.keys(DB.reduce(function(m,r){ if(r.location&&r.location!=="Non spécifié") m[r.location]=1; return m; },{})).sort();
+    dl.innerHTML = locs.map(function(l){ return "<option value="+JSON.stringify(l)+">"; }).join("");
+  }
   function buildFilters() {
     var sel = function (id, arr, all) {
       var e = $(id); if (!e) return;
@@ -490,6 +530,14 @@
     });
     if (!r) { $("#e_date_reception").value = nowISO(); $("#e_status").value = "active"; }
     $("#e_srcHint").textContent = r ? ("Origine : " + (r.source || "—")) : "";
+    /* Populate location suggestions from current DB locations */
+    var dloc = $("#locSuggestions");
+    if (dloc) {
+      var locs = Object.keys(
+        DB.reduce(function(m, r){ if (r.location && r.location !== "Non spécifié") m[r.location] = 1; return m; }, {})
+      ).sort();
+      dloc.innerHTML = locs.map(function(l){ return "<option value=\"" + esc(l) + "\">"; }).join("");
+    }
     $("#mEdit").classList.add("on");
     setTimeout(function () { $("#e_name").focus(); }, 60);
   }
@@ -1177,29 +1225,60 @@
       .then(function (r) { return r.json(); });
   }
   function syncPush() {
-    /* Manual full-replace — useful after an import or reset.
-       Normal usage: individual changes sync automatically via pushRemote(). */
-    var b = $("#btnPush"); b.disabled = true; b.textContent = "Envoi complet…";
-    gsCall("ls_seed", { records: DB })
-      .then(function (j) {
-        if (!j.ok) throw new Error(j.error || "Erreur serveur");
-        setSync(true, "Base envoyée vers Google Sheets — " + j.count + " lots");
-        toast("Publié vers Google : " + j.count + " lots", "ok");
-      })
-      .catch(function (e) { setSync(false, e.message); toast("Échec de l'envoi : " + e.message, "err"); })
-      .then(function () { b.disabled = false; b.textContent = "Publier vers Google"; });
+    /* Push ALL local records to GS using upsert (additive, never wipes).
+       Use this after an offline session or import to bring GS up to date. */
+    var b = $("#btnPush"); b.disabled = true;
+    var total = DB.length, done = 0, errors = 0;
+    b.textContent = "Synchronisation 0/" + total + "…";
+    setSyncBusy("Envoi de " + total + " lots vers Google…");
+
+    /* Batch upserts in groups of 50 to avoid GS rate limits */
+    var CHUNK = 50;
+    function pushChunk(i) {
+      if (i >= total) {
+        b.disabled = false; b.textContent = "Publier vers Google";
+        if (errors) {
+          setSync(false, "Partiel : " + done + "/" + total + " lots (" + errors + " erreurs)");
+          toast("Synchronisation partielle : " + done + "/" + total, "err");
+        } else {
+          setSync(true, "En ligne — " + done + " lots synchronisés");
+          toast("Tous les lots synchronisés avec Google : " + done, "ok");
+        }
+        return;
+      }
+      var batch = DB.slice(i, i + CHUNK);
+      /* Use ls_bulk_upsert (additive) — NOT ls_seed */
+      gsCall("ls_bulk_upsert", { records: batch })
+        .then(function (j) {
+          if (!j.ok) throw new Error(j.error || "err");
+          done += batch.length;
+          b.textContent = "Synchronisation " + done + "/" + total + "…";
+          pushChunk(i + CHUNK);
+        })
+        .catch(function () {
+          errors += batch.length;
+          pushChunk(i + CHUNK);  /* continue with next batch */
+        });
+    }
+    pushChunk(0);
   }
   function syncPull() {
-    var b = $("#btnPull"); b.disabled = true; b.textContent = "Chargement…";
+    var b = $("#btnPull"); b.disabled = true; b.textContent = "Fusion en cours…";
     gsCall("ls_list")
       .then(function (j) {
         if (!j.ok) throw new Error(j.error || "Erreur serveur");
-        if (!j.records || !j.records.length) throw new Error("La feuille Google est vide — publiez d'abord la base");
-        DB = j.records; save(); buildFilters(); render();
+        var gsRecs = j.records || [];
+        if (!gsRecs.length) throw new Error("La feuille Google est vide — rien à importer");
+        /* Merge: GS records + local-only records */
+        var gsMap = {};
+        gsRecs.forEach(function(r){ gsMap[r.id]=r; });
+        var localOnly = DB.filter(function(r){ return !gsMap[r.id]; });
+        DB = gsRecs.concat(localOnly);
+        save(); buildFilters(); render();
         setSync(true, "En ligne — Google Sheets");
-        toast("Base rechargée : " + DB.length + " lots", "ok");
+        toast("Fusion terminée : " + DB.length + " lots (" + localOnly.length + " locaux conservés)", "ok");
       })
-      .catch(function (e) { setSync(false, e.message); toast("Échec du chargement : " + e.message, "err"); })
+      .catch(function (e) { setSync(false, e.message); toast("Échec : " + e.message, "err"); })
       .then(function () { b.disabled = false; b.textContent = "Recharger depuis Google"; });
   }
   function syncTest() {
@@ -1265,7 +1344,7 @@
     if (VIEW === "dash")   renderDash();
     else if (VIEW === "inv")   renderInv();
     else if (VIEW === "out")   renderOut();
-    else if (VIEW === "recv")  {}             /* handled by form events */
+    else if (VIEW === "recv")  { populateRecvLoc(); }
     else if (VIEW === "rep")   renderRep();
     else if (VIEW === "ana")   renderAna();
     else if (VIEW === "upload") renderUpload();
@@ -1595,11 +1674,41 @@
       return (a.cover===null?1e9:a.cover)-(b.cover===null?1e9:b.cover);
     });
     var needOrder = rows.filter(function(r){return r.flag!=="ok";});
+    /* Build unique categories for filter */
+    var orderCats = [""].concat(
+      Object.keys(rows.reduce(function(m,r){m[r.cat]=1;return m;},{})).sort()
+    );
+    var fCatV = (document.getElementById("oFCat")&&document.getElementById("oFCat").value)||"";
+    var fFlagV = (document.getElementById("oFFlag")&&document.getElementById("oFFlag").value)||"";
+    /* Apply filters */
+    var rowsFilt = rows.filter(function(r){
+      if (fCatV && r.cat !== fCatV) return false;
+      if (fFlagV && r.flag !== fFlagV) return false;
+      return true;
+    });
+    var needOrderFilt = rowsFilt.filter(function(r){return r.flag!=="ok";});
     var h = '<div class="kpis">' +
-      kpi(needOrder.length?"danger":"ok", needOrder.length, "Articles à commander", "Sous le point de commande ou épuisés") +
+      kpi(needOrder.length?"danger":"ok", needOrder.length, "Articles à commander", "Total — toutes catégories") +
       kpi("", rows.length, "Articles suivis", "Tous réactifs et consommables") +
       kpi("warn", rows.filter(function(r){return r.cmm===0;}).length, "Sans historique CMM", "Aucune sortie enregistrée") +
       '</div>';
+    /* Filters bar */
+    h += '<div class="card"><div class="card-h"><h3>Filtres</h3></div><div class="card-b">' +
+      '<div class="filters">' +
+      '<div class="field"><label>Catégorie</label><select id="oFCat" onchange="go(\'order\')">' +
+      orderCats.map(function(c){ return '<option value="'+c+'"'+(c===fCatV?' selected':'')+'>'+( c||"Toutes catégories")+'</option>'; }).join("") +
+      '</select></div>' +
+      '<div class="field"><label>État</label><select id="oFFlag" onchange="go(\'order\')">' +
+      '<option value=""'+(fFlagV===''?' selected':'')+'>Tous états</option>' +
+      '<option value="out"'+(fFlagV==='out'?' selected':'')+'>Épuisé</option>' +
+      '<option value="order"'+(fFlagV==='order'?' selected':'')+'>À commander</option>' +
+      '<option value="ok"'+(fFlagV==='ok'?' selected':'')+'>Suffisant</option>' +
+      '</select></div>' +
+      '<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'oFCat\').value=\'\';document.getElementById(\'oFFlag\').value=\'\';go(\'order\')">Réinitialiser</button>' +
+      '</div></div></div>';
+    /* Use filtered rows for the table */
+    rows = rowsFilt;
+    needOrder = needOrderFilt;
     if (!months) {
       h += '<div class="note warn"><b>Historique insuffisant</b>Aucune sortie enregistrée. ' +
         'Les recommandations sont basées sur le stock minimum saisi. Enregistrez les sorties pour calculer la CMM automatiquement.</div>';

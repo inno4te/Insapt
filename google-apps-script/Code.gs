@@ -41,6 +41,11 @@
  *   GET  ?action=ls_users&key=...             -> {ok:true, users:[...]}
  *   POST {action:"ls_user_upsert", key, user_rec} -> {ok:true}
  *   POST {action:"ls_auth",  user, pass}     -> {ok, role, name}  (no key needed)
+ *   POST {action:"ls_bulk_upsert", key, records} -> {ok:true, count}  (ADDITIVE push)
+ *
+ * SYNC POLICY: ls_bulk_upsert and ls_upsert are ALWAYS additive (insert-or-update).
+ *   NEVER use ls_seed (full-replace) from autoConnect.
+ *   ls_seed is reserved for deliberate manual resets only.
  * ------------------------------------------------------------
  */
 
@@ -100,6 +105,7 @@ function doPost(e) {
   if (body.action === 'ls_delete' && body.id)      { lsDelete(body.id); return json({ ok:true }); }
   if (body.action === 'ls_move'   && body.move)    { lsMove(body.move); return json({ ok:true }); }
   if (body.action === 'ls_user_upsert' && body.user_rec) { lsUpsertUser(body.user_rec); return json({ ok:true }); }
+  if (body.action === 'ls_bulk_upsert' && body.records)  { return json({ ok:true, count:lsBulkUpsert(body.records) }); }
   if (body.action === 'ls_auth')   { return json(lsAuth(body.user, body.pass)); }
 
   if (body.action === 'el_login')      return json(elLogin(body.name, body.section));
@@ -429,6 +435,38 @@ function lsMoves() {
   return out.reverse();
 }
 
+
+
+/* Additive bulk upsert — inserts or updates each record by id.
+   NEVER clears the sheet. Safe to call from autoConnect and syncPush.
+   Processes in batches internally; caller batches at 50 records. */
+function lsBulkUpsert(records) {
+  if (!records || !records.length) return 0;
+  var sh = getLabSheet();
+  var vals = sh.getDataRange().getValues();
+  /* Build id->rowIndex map (1-based, first data row = 2) */
+  var idCol = LS_COLS.indexOf('id');
+  var rowMap = {};
+  for (var i = 1; i < vals.length; i++) {
+    var id = String(vals[i][idCol] || '');
+    if (id) rowMap[id] = i + 1;   /* 1-based sheet row */
+  }
+  var toAppend = [];
+  records.forEach(function(rec) {
+    var row = LS_COLS.map(function(c){ var v=rec[c]; return (v===null||v===undefined)?'':v; });
+    var rid = String(rec.id || '');
+    if (rid && rowMap[rid]) {
+      /* Update existing row */
+      sh.getRange(rowMap[rid], 1, 1, LS_COLS.length).setValues([row]);
+    } else {
+      toAppend.push(row);
+    }
+  });
+  if (toAppend.length) {
+    sh.getRange(sh.getLastRow() + 1, 1, toAppend.length, LS_COLS.length).setValues(toAppend);
+  }
+  return records.length;
+}
 
 /* ==================== LAB STOCK — USER MANAGEMENT ====================
    Tab: LabUsers

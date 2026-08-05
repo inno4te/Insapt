@@ -214,10 +214,12 @@
                     <option>Don — OMS</option>
                     <option>Don — Fonds Mondial</option>
                     <option>Don — UNICEF</option>
+                    <option>Don — MSF Suisse</option>
                     <option>Don — Bundeswehr / Labo mobile</option>
                     <option>Don — autre partenaire</option>
                     <option>Transfert interne</option>
                     <option>Réception directe</option>
+                    <option>Saisie manuelle</option>
                   </select></div>
               </div>
             </div>
@@ -242,10 +244,12 @@
                     <option>Ambiante (RT)</option><option>+2 à +8 °C</option>
                     <option>-20 °C</option><option>-80 °C</option><option>Non spécifiée</option>
                   </select></div>
-                <div class="field"><label for="rLocSel">Emplacement</label><select id="rLocSel"></select></div>
+                <div class="field"><label for="rLocSel">Emplacement</label>
+                <input id="rLocSel" list="recvLocSugg" autocomplete="off" placeholder="Saisissez ou choisissez">
+                <datalist id="recvLocSugg"></datalist></div>
               </div>
-              <div class="field"><label for="rLocNew">Nouvel emplacement (si absent de la liste)</label>
-                <input id="rLocNew" placeholder="Ex. : Congélateur -80 °C n°2"></div>
+              <!-- rLocNew kept as hidden fallback for JS compat -->
+              <input id="rLocNew" type="hidden">
               <div class="note" id="rCheck" style="display:none"></div>
               <div class="field" style="display:flex;align-items:center;gap:9px">
                 <input id="rApproved" type="checkbox" style="width:auto;margin:0">
@@ -438,12 +442,35 @@
           <div class="field"><label for="e_date_expiry">Date de péremption</label><input id="e_date_expiry" type="date"></div>
         </div>
         <div class="grid3">
-          <div class="field"><label for="e_location">Emplacement</label><input id="e_location"></div>
-          <div class="field"><label for="e_temperature">Température</label><input id="e_temperature"></div>
+          <div class="field"><label for="e_location">Emplacement</label>
+            <input id="e_location" list="locSuggestions" autocomplete="off" placeholder="Saisissez ou choisissez un emplacement">
+            <datalist id="locSuggestions"></datalist></div>
+          <div class="field"><label for="e_temperature">Température de conservation</label>
+            <input id="e_temperature" list="tempSuggestions" autocomplete="off" placeholder="Ex: -20 °C, +2 à +8 °C">
+            <datalist id="tempSuggestions">
+              <option value="Ambiante (RT)">
+              <option value="+2 à +8 °C">
+              <option value="-20 °C">
+              <option value="-80 °C">
+            </datalist></div>
           <div class="field"><label for="e_min_level">Seuil minimum</label><input id="e_min_level" type="number" step="any"></div>
         </div>
         <div class="grid2">
-          <div class="field"><label for="e_source">Source / origine</label><input id="e_source"></div>
+          <div class="field"><label for="e_source">Source / financement</label>
+            <input id="e_source" list="srcSuggestions" autocomplete="off" placeholder="Sélectionnez ou saisissez">
+            <datalist id="srcSuggestions">
+              <option value="Achat direct INSAPT">
+              <option value="Marché public (CPM)">
+              <option value="Don — OMS">
+              <option value="Don — Fonds Mondial">
+              <option value="Don — UNICEF">
+              <option value="Don — MSF Suisse">
+              <option value="Don — Bundeswehr / Labo mobile">
+              <option value="Don — autre partenaire">
+              <option value="Transfert interne">
+              <option value="Réception directe">
+              <option value="Saisie manuelle">
+            </datalist></div>
           <div class="field"><label for="e_status">Statut</label>
             <select id="e_status">
               <option value="active">En service</option>
