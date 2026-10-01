@@ -93,7 +93,7 @@
 
       "ppl.kicker": "Direction",
       "ppl.title": "L'équipe de direction",
-      "ppl.p": "Nommée par le Décret N°0642/PR/PM/MSPP/2025 du 15 avril 2025. Les photographies officielles seront ajoutées prochainement.",
+      "ppl.p": "Nommée par le Décret N°0642/PR/PM/MSPP/2025 du 15 avril 2025.",
       "ppl.dg": "Directeur Général",
       "ppl.dgName": "Pr Ali Mahamat Moussa",
       "ppl.dga": "Directrice Générale Adjointe",
@@ -155,7 +155,7 @@
 
       /* SCM portal */
       "scm.loginTitle": "Portail Chaîne d'Approvisionnement",
-      "scm.loginSub": "Accès réservé au responsable SCM de l'INSAPT.",
+      "scm.loginSub": "Accès réservé au personnel habilité de l'INSAPT.",
       "scm.user": "Identifiant",
       "scm.pass": "Mot de passe",
       "scm.signin": "Se connecter",
@@ -264,7 +264,7 @@
 
       "ppl.kicker": "Leadership",
       "ppl.title": "The leadership team",
-      "ppl.p": "Appointed by Decree No. 0642/PR/PM/MSPP/2025 of 15 April 2025. Official photographs will be added shortly.",
+      "ppl.p": "Appointed by Decree No. 0642/PR/PM/MSPP/2025 of 15 April 2025.",
       "ppl.dg": "Director General",
       "ppl.dgName": "Prof. Ali Mahamat Moussa",
       "ppl.dga": "Deputy Director General",
@@ -325,7 +325,7 @@
       "foot.builtFor": "Republic of Chad · Unity — Work — Progress",
 
       "scm.loginTitle": "Supply Chain Portal",
-      "scm.loginSub": "Restricted to the INSAPT SCM manager.",
+      "scm.loginSub": "Restricted to authorised INSAPT staff.",
       "scm.user": "Username",
       "scm.pass": "Password",
       "scm.signin": "Sign in",
@@ -434,7 +434,7 @@
 
       "ppl.kicker": "الإدارة",
       "ppl.title": "فريق الإدارة",
-      "ppl.p": "معيّن بموجب المرسوم رقم ٠٦٤٢/PR/PM/MSPP/٢٠٢٥ الصادر في ١٥ أبريل ٢٠٢٥. ستُضاف الصور الرسمية قريباً.",
+      "ppl.p": "معيّن بموجب المرسوم رقم ٠٦٤٢/PR/PM/MSPP/٢٠٢٥ الصادر في ١٥ أبريل ٢٠٢٥.",
       "ppl.dg": "المدير العام",
       "ppl.dgName": "الأستاذ علي محمد موسى",
       "ppl.dga": "المديرة العامة النائبة",
@@ -495,7 +495,7 @@
       "foot.builtFor": "جمهورية تشاد · وحدة — عمل — تقدم",
 
       "scm.loginTitle": "بوابة سلسلة الإمداد",
-      "scm.loginSub": "مخصصة لمسؤول سلسلة الإمداد بالمعهد.",
+      "scm.loginSub": "مخصصة للموظفين المخوّلين في المعهد.",
       "scm.user": "اسم المستخدم",
       "scm.pass": "كلمة المرور",
       "scm.signin": "تسجيل الدخول",

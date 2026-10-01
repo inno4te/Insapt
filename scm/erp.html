@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP Achats — INSAPT</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Libre+Franklin:wght@700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --blue:#002664; --gold:#FECB00; --red:#C60C30;
+  --n9:#031a3d; --n8:#052a5e; --n7:#0a3a7a; --n05:#eef3fb;
+  --ink:#14213d; --slate:#4a5875; --line:#dce4f0; --paper:#fff; --wash:#f4f7fc;
+  --ok:#127a51; --okb:#e3f5ec; --warn:#9a6410; --warnb:#fdf0d8; --bad:#b41230; --badb:#fbe3e8;
+  --ff-d:"Libre Franklin","Segoe UI",system-ui,sans-serif; --ff:"Inter","Segoe UI",system-ui,sans-serif; --ff-m:"JetBrains Mono",Consolas,monospace;
+  --r:12px; --sh:0 1px 2px rgba(3,26,61,.06),0 2px 8px rgba(3,26,61,.06);
+}
+*{box-sizing:border-box} html,body{margin:0}
+body{font:14px/1.5 var(--ff);color:var(--ink);background:var(--wash);-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:var(--ff-d);margin:0;letter-spacing:-.01em;color:var(--n8)}
+button{font:inherit;cursor:pointer} a{color:var(--n7)}
+input,select,textarea{font:inherit;width:100%;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+input:focus,select:focus,textarea:focus,button:focus-visible,a:focus-visible{outline:3px solid rgba(254,203,0,.55);outline-offset:1px;border-color:var(--n7)}
+label{display:block;font-size:12px;font-weight:600;color:var(--slate);margin:0 0 12px}
+label input,label select,label textarea{margin-top:4px;font-weight:400}
+label.chk{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--ink);font-weight:500}
+label.chk input{width:auto;margin:0}
+fieldset{border:1.5px dashed var(--line);border-radius:10px;padding:10px 14px 2px;margin:0 0 14px}
+legend{font:700 12px var(--ff);color:var(--n7);padding:0 6px;text-transform:uppercase;letter-spacing:.05em}
+.mono{font-family:var(--ff-m);font-size:12.5px}
+.small{font-size:12.5px;color:var(--slate)}
+.bad{color:var(--bad)}
+[hidden]{display:none!important}
+
+/* boutons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;border:1.5px solid var(--blue);background:var(--blue);color:#fff;font-weight:600;font-size:13.5px;text-decoration:none;white-space:nowrap}
+.btn:hover{background:var(--n7)}
+.btn.ghost{background:#fff;color:var(--n8);border-color:var(--line)} .btn.ghost:hover{background:var(--n05)}
+.btn.danger{color:var(--bad)} .btn.danger:hover{background:var(--badb)}
+.btn.sm{padding:5px 11px;font-size:12.5px}
+.btn.up{cursor:pointer;margin:0}
+.lnk{background:none;border:0;color:var(--n7);text-decoration:underline;padding:0}
+.x{background:none;border:0;color:var(--slate);font-size:18px;line-height:1;padding:2px 6px;border-radius:6px} .x:hover{background:var(--badb);color:var(--bad)}
+
+/* gate + choix du profil */
+.full{min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(900px 420px at 10% -10%,rgba(254,203,0,.16),transparent 60%),linear-gradient(160deg,var(--n9),var(--blue) 60%,var(--n7));color:#fff}
+.full .inner{width:100%;max-width:1060px}
+.flag{display:flex;height:5px;width:120px;border-radius:3px;overflow:hidden;margin-bottom:16px}.flag i{flex:1}.flag i:nth-child(1){background:var(--blue);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)}.flag i:nth-child(2){background:var(--gold)}.flag i:nth-child(3){background:var(--red)}
+.full h1{color:#fff;font-size:30px;font-weight:900}
+.full p.lead{opacity:.8;max-width:640px;margin:8px 0 26px}
+.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.pcard{text-align:left;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.18);border-radius:14px;padding:18px 16px;color:#fff;display:flex;flex-direction:column;gap:6px;min-height:210px;transition:transform .15s,background .15s}
+.pcard i{font-style:normal;width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:var(--gold);color:var(--n9);font:800 19px var(--ff-d);margin-bottom:6px}
+.pcard b{font:800 16px var(--ff-d)} .pcard span{font-size:12.5px;opacity:.8;line-height:1.45}
+.pcard:hover:not(.off){background:rgba(255,255,255,.14);transform:translateY(-2px)}
+.pcard.cur{border-color:var(--gold)}
+.pcard.off{opacity:.38;cursor:not-allowed}
+.pcard em{margin-top:auto;font-style:normal;font-size:11.5px;font-weight:700}
+.pcard em.badge{align-self:flex-start;background:var(--red);padding:2px 9px;border-radius:20px}
+.pcard em.no{opacity:.75}
+.who-line{display:flex;gap:12px;align-items:center;margin-top:24px;font-size:13px;opacity:.85;flex-wrap:wrap}
+.who-line a{color:var(--gold)}
+
+/* coquille */
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh;background:linear-gradient(90deg,var(--blue) 240px,var(--wash) 240px)}
+.side{background:linear-gradient(180deg,var(--n9),var(--blue));color:#fff;padding:18px 12px;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column}
+.brand{display:flex;gap:10px;align-items:center;padding:4px 8px 16px;border-bottom:1px solid rgba(255,255,255,.13);margin-bottom:12px}
+.brand .crest{padding:0 8px;height:36px;border-radius:9px;background:var(--gold);color:var(--n9);display:grid;place-items:center;font:900 11.5px var(--ff-d);letter-spacing:.02em}
+.brand b{display:block;font:800 15px var(--ff-d)} .brand small{font-size:11px;opacity:.65}
+#nav a{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:9px;color:rgba(255,255,255,.85);text-decoration:none;font-size:13.5px;margin-bottom:2px}
+#nav a:hover{background:rgba(255,255,255,.09);color:#fff}
+#nav a.on{background:var(--gold);color:var(--n9);font-weight:700}
+.badge{background:var(--red);color:#fff;font-size:11px;font-weight:700;padding:1px 8px;border-radius:12px}
+#nav a.on .badge{background:var(--n9)}
+.side .foot{margin-top:auto;padding-top:14px;border-top:1px solid rgba(255,255,255,.13);font-size:12px}
+.side .foot a{display:block;color:rgba(255,255,255,.7);text-decoration:none;padding:5px 8px} .side .foot a:hover{color:var(--gold)}
+#who b{display:block;font-size:13px} #who small{opacity:.65;font-size:11px}
+.top{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:12px 26px;box-shadow:var(--sh)}
+.top .t{flex:1;min-width:0} .top small{display:block;font-size:11.5px;color:var(--slate);text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+.top h1{font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sync{display:inline-flex;align-items:center;gap:7px;border:1.5px solid var(--line);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--slate);background:#fff}
+.sync::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--slate)}
+.sync.ok::before{background:var(--ok)} .sync.err::before{background:var(--bad)} .sync.busy::before{background:var(--gold);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.3}}
+main{padding:22px 26px 60px;max-width:1380px}
+.lede{color:var(--slate);margin:0 0 16px;max-width:760px}
+
+/* cartes, kpi */
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);padding:16px 18px;margin-bottom:18px}
+.card h3{font-size:15px;margin-bottom:12px} .card h3 small{font-family:var(--ff);font-weight:500;color:var(--slate);font-size:12.5px}
+.card h4{font-size:13px;margin:14px 0 8px;color:var(--n7);text-transform:uppercase;letter-spacing:.04em}
+.card.muted{background:var(--wash)}
+.ch{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px} .ch h3{margin:0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:#fff;border:1px solid var(--line);border-left:4px solid var(--n7);border-radius:10px;padding:12px 14px;box-shadow:var(--sh)}
+.kpi b{display:block;font:800 25px/1.1 var(--ff-d);color:var(--blue)} .kpi span{font-size:12px;color:var(--slate);font-weight:500} .kpi small{display:block;font-size:11px;color:var(--slate);margin-top:3px}
+.kpi.hot{border-left-color:var(--gold)} .kpi.bad{border-left-color:var(--bad)} .kpi.bad b{color:var(--bad)} .kpi.ok{border-left-color:var(--ok)}
+.grid2{display:grid;grid-template-columns:1.2fr 1fr;gap:18px}
+.pipe .pr{display:grid;grid-template-columns:210px 1fr 32px;gap:10px;align-items:center;font-size:12.5px;margin-bottom:6px}
+.pipe i{height:12px;background:var(--n05);border-radius:4px;overflow:hidden;display:block} .pipe em{display:block;height:100%;background:var(--n7);border-radius:4px}
+.pipe b{text-align:right;font-family:var(--ff-m)}
+.alerts{list-style:none;margin:0;padding:0} .alerts li{padding:8px 10px 8px 12px;border-left:3px solid var(--warn);background:var(--warnb);border-radius:0 7px 7px 0;margin-bottom:6px;font-size:12.5px}
+.alerts li.bad{border-color:var(--bad);background:var(--badb)} .alerts li[data-go]{cursor:pointer}
+.empty{text-align:center;padding:30px 16px;color:var(--slate)} .empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px} .empty p{margin:0 0 12px}
+
+/* tableaux */
+.tw{overflow-x:auto}
+.tb{width:100%;border-collapse:collapse;font-size:13px}
+.tb th{background:var(--n05);color:var(--n8);text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;padding:8px 10px;border-bottom:2px solid var(--line);white-space:nowrap}
+.tb td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.tb tr[data-open],.tb tr[data-sup],.tb tr[data-bud]{cursor:pointer} .tb tbody tr:hover{background:var(--wash)}
+.tb .num{text-align:right;font-family:var(--ff-m);white-space:nowrap}
+.tb td .t{display:block} .tb td small{display:block;color:var(--slate);font-size:11.5px}
+.tb tr.sum td{font-weight:700;background:var(--wash)} .tb tr.win td{background:var(--okb)} .tb tr.win em{color:var(--ok);font-style:normal;font-weight:700;font-size:11px}
+.tb.items input{padding:6px 8px} .tb.items td{vertical-align:middle}
+.urg{color:var(--red);font-style:normal;font-weight:700} .late{color:var(--bad);font-weight:600}
+.chip{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11.5px;font-weight:600;background:var(--n05);color:var(--n7);white-space:nowrap}
+.chip.st-BROUILLON{background:#eceef3;color:#5c6478} .chip.st-CLOTURE{background:var(--okb);color:var(--ok)} .chip.st-REJETE{background:var(--badb);color:var(--bad)}
+.chip.st-AVIS_CHEF,.chip.st-APPROBATION{background:#fff4c9;color:#7a5a00} .chip.st-BUDGET,.chip.st-PAIEMENT{background:#e8e3fa;color:#4b3c9a} .chip.st-RECEPTION{background:#dff3f7;color:#0d6274}
+.chip.urg{background:var(--red);color:#fff} .chip.warnc{background:var(--warnb);color:var(--warn)}
+.chip.sup-ACTIF{background:var(--okb);color:var(--ok)} .chip.sup-SUSPENDU,.chip.sup-EXCLU{background:var(--badb);color:var(--bad)} .chip.sup-EN_ATTENTE{background:var(--warnb);color:var(--warn)}
+.meter{display:inline-block;width:90px;height:8px;background:var(--n05);border-radius:4px;overflow:hidden;vertical-align:middle;margin-right:6px} .meter i{display:block;height:100%;background:var(--ok)}
+.meter.warn i{background:var(--gold)} .meter.bad i{background:var(--bad)}
+
+/* formulaires */
+.form .fh{display:flex;flex-direction:column;border-bottom:3px solid var(--gold);padding-bottom:10px;margin-bottom:16px}
+.form .fh b{font:800 17px var(--ff-d);color:var(--n8)} .form .fh small{color:var(--slate);font-size:12px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px} .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:0 14px} .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:0 14px;align-items:end}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 14px} .bar.end{justify-content:flex-end} .spacer{flex:1}
+.bar input{max-width:360px}
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px} .filters input{flex:1;min-width:240px} .filters select{width:auto}
+.tot{font-size:13px} .tot b{font-family:var(--ff-m);font-size:15px;color:var(--blue)} .tot small{color:var(--slate);margin-left:6px}
+.ttc{font-size:14px;margin:4px 0 14px;padding:10px 14px;background:var(--n05);border-radius:8px} .ttc b{font-family:var(--ff-m);color:var(--blue);font-size:16px}
+.note{border-left:3px solid var(--n7);background:var(--n05);padding:9px 13px;border-radius:0 8px 8px 0;margin:0 0 14px;font-size:13px}
+.note b{display:block;margin-bottom:2px} .note.warn{border-color:var(--warn);background:var(--warnb)} .note.bad{border-color:var(--bad);background:var(--badb)} .note.ok{border-color:var(--ok);background:var(--okb)}
+.note label{margin-top:8px}
+.files{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0} .file{display:inline-flex;gap:6px;align-items:center;background:var(--n05);border:1px solid var(--line);border-radius:7px;padding:4px 10px;font-size:12.5px;text-decoration:none}
+.file button{background:none;border:0;color:var(--bad);font-size:15px;padding:0}
+.ul,.clauses{margin:0 0 6px;padding-left:20px} .ul li,.clauses li{margin-bottom:5px;font-size:13px}
+.kv{display:grid;grid-template-columns:190px 1fr;gap:6px 14px;margin:0 0 10px;font-size:13.5px} .kv dt{color:var(--slate);font-weight:600;font-size:12.5px} .kv dd{margin:0}
+.flow{list-style:none;padding:0;margin:0 0 10px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.flow li{background:var(--n05);border-radius:9px;padding:10px 12px;font-size:12.5px} .flow b{display:block;color:var(--n8)} .flow span{color:var(--slate)}
+
+/* dossier */
+.dh{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:16px 20px;margin-bottom:18px;box-shadow:var(--sh);border-top:4px solid var(--blue)}
+.dh .no{font-size:14px;font-weight:700;color:var(--red)} .dh h2{font-size:21px;margin:6px 0 4px} .dh p{margin:0;color:var(--slate);font-size:13px}
+.dh .amt{text-align:right;white-space:nowrap} .dh .amt b{display:block;font:800 26px var(--ff-d);color:var(--blue)} .dh .amt small{color:var(--slate);font-size:11.5px}
+.dgrid{display:grid;grid-template-columns:1fr 300px;gap:18px;align-items:start}
+.card.act{border:2px solid var(--gold);box-shadow:0 0 0 4px rgba(254,203,0,.15)}
+.dside{position:sticky;top:76px;background:#fffdf5;border:1px solid #eadfb8;border-radius:var(--r);padding:16px 16px 10px;box-shadow:var(--sh);
+  background-image:repeating-linear-gradient(0deg,transparent 0 27px,rgba(0,38,100,.05) 27px 28px)}
+.dside h3{font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--n7);margin-bottom:10px} .dside h3.mt{margin-top:18px}
+/* Fiche de circulation : visas tamponnés */
+.slip{list-style:none;margin:0;padding:0;counter-reset:s}
+.slip li{position:relative;padding:8px 0 10px 30px;border-bottom:1px dashed #d9cfa8;min-height:44px}
+.slip li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:8px;width:20px;height:20px;border-radius:50%;border:1.5px solid #b9ad84;font:700 11px/17px var(--ff);text-align:center;color:#8a7e55;background:#fffdf5}
+.slip li b{font-size:12.5px;color:#5f5634;font-weight:600}
+.slip li.done::before{content:"✓";background:var(--blue);border-color:var(--blue);color:#fff}
+.slip li.cur::before{background:var(--gold);border-color:var(--gold);color:var(--n9)} .slip li.cur b{color:var(--ink);font-weight:700}
+.slip li.end::before{content:"■";background:var(--ok);border-color:var(--ok);color:#fff}
+.stamp.green{border-color:rgba(18,122,81,.85);color:rgba(18,122,81,.95)}
+.slip li.rej::before{content:"✕";background:var(--red);border-color:var(--red);color:#fff}
+.stamp{display:inline-block;margin-top:5px;padding:3px 8px;border:2px solid rgba(0,38,100,.75);border-radius:5px;color:rgba(0,38,100,.85);font:700 10.5px/1.25 var(--ff-m);letter-spacing:.04em;transform:rotate(-2.5deg);text-transform:uppercase;background:rgba(255,255,255,.4)}
+.slip li:nth-child(even) .stamp{transform:rotate(1.8deg)}
+.stamp i{display:block;font-style:normal;font-weight:500;text-transform:none;letter-spacing:0}
+.stamp.red{border-color:rgba(198,12,48,.8);color:rgba(198,12,48,.9)}
+.wait{display:inline-block;margin-top:4px;font-size:11.5px;color:#7a5a00;font-weight:600}
+.hist{list-style:none;margin:0;padding:0;max-height:420px;overflow-y:auto} .hist li{padding:7px 0;border-bottom:1px solid #eee3bd;font-size:12.5px}
+.hist small{display:block;color:var(--slate);font-size:11px} .hist p{margin:3px 0 0;color:var(--ink)}
+
+.toast{position:fixed;right:22px;bottom:22px;max-width:440px;background:var(--n9);color:#fff;padding:12px 16px;border-radius:10px;box-shadow:0 12px 40px rgba(3,26,61,.3);opacity:0;transform:translateY(10px);transition:.2s;pointer-events:none;z-index:99;font-size:13.5px}
+.toast.on{opacity:1;transform:none} .toast.ok{background:var(--ok)} .toast.err{background:var(--bad)} .toast.warn{background:#7a5207}
+.foot-brand{text-align:center;color:#9aa4b5;font-size:11px;padding:18px}
+
+/* impression */
+#printZone{display:none}
+@media print{
+  body.printing>*:not(#printZone){display:none!important} body.printing #printZone{display:block}
+  body{background:#fff}
+  .pdoc{font:11.5px/1.45 Arial,sans-serif;color:#111;padding:6mm 4mm}
+  .ph{display:flex;justify-content:space-between;gap:16px;border-bottom:3px solid #002664;padding-bottom:8px;margin-bottom:12px}
+  .ph small{display:block;color:#555;font-size:9.5px} .ph b{display:block;font-size:13.5px;color:#002664;margin:2px 0}
+  .pt{text-align:right} .pt b{display:block;font-size:16px;color:#002664} .pt span{display:block;font-size:11px}
+  .pmeta,.pt2,.ptot,.psig{width:100%;border-collapse:collapse;margin:8px 0}
+  .pmeta td{width:50%;vertical-align:top;padding:6px 8px;border:1px solid #ccd;font-size:11px}
+  .pt2 th{background:#002664;color:#fff;padding:5px 6px;text-align:left} .pt2 td{border:1px solid #ccd;padding:5px 6px} .c{text-align:center} .r{text-align:right}
+  .ptot{width:55%;margin-left:45%} .ptot td{padding:4px 6px;border-bottom:1px solid #dde} .ptot td:last-child{text-align:right;font-family:monospace} .ptot tr.g td{font-weight:700;background:#eef3fb}
+  .pdoc h4{font-size:11.5px;color:#002664;margin:12px 0 4px} .pcl{padding-left:16px;font-size:10.5px} .pcl li{margin-bottom:3px}
+  .psig{margin-top:22px} .psig td{text-align:center;vertical-align:bottom;padding:0 10px;white-space:pre-line;font-size:10.5px} .psig div{border-top:1px solid #111;margin:46px 10px 4px}
+  .pf{margin-top:18px;border-top:1px solid #ccd;padding-top:5px;text-align:center;color:#777;font-size:9px}
+  @page{size:A4;margin:12mm}
+}
+@media(max-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}.dgrid,.grid2{grid-template-columns:1fr}.dside{position:static}.flow{grid-template-columns:1fr 1fr}}
+@media(max-width:820px){
+  .app{grid-template-columns:1fr;background:var(--wash)}.side{position:static;height:auto}#nav{display:flex;flex-wrap:wrap;gap:4px}#nav a{margin:0}
+  .side .foot{display:none} main{padding:16px 14px 50px}.top{padding:10px 14px;flex-wrap:wrap}
+  .cards{grid-template-columns:1fr 1fr}.g2,.g3,.g4{grid-template-columns:1fr}.kv{grid-template-columns:1fr}.pipe .pr{grid-template-columns:130px 1fr 28px}
+  .dh{flex-direction:column}.dh .amt{text-align:left}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<!-- Accès refusé : pas de session SCM -->
+<div class="full" id="gate" hidden><div class="inner" style="max-width:520px">
+  <div class="flag"><i></i><i></i><i></i></div>
+  <h1>ERP Achats INSAPT</h1>
+  <p class="lead">Connectez-vous d'abord au Portail Chaîne d'Approvisionnement avec votre compte personnel, puis ouvrez le système de passation des marchés depuis le portail.</p>
+  <a class="btn" style="background:var(--gold);color:var(--n9);border-color:var(--gold)" href="index.html">Se connecter au portail SCM</a>
+</div></div>
+
+<!-- Choix du profil -->
+<div class="full" id="chooser" hidden><div class="inner">
+  <div class="flag"><i></i><i></i><i></i></div>
+  <h1>Choisissez votre profil</h1>
+  <p class="lead">Le système de passation des marchés applique le circuit de visas du Manuel INSAPT (Version 1, septembre 2026). Chaque profil donne accès aux étapes qui relèvent de votre fonction ; les profils non autorisés pour votre compte sont grisés (séparation des tâches, §4.7).</p>
+  <div class="cards"></div>
+  <div class="who-line"><span id="whoChooser"></span><span class="spacer"></span><button class="btn ghost sm" id="chooseClose" hidden>Annuler</button><a href="index.html">← Retour au portail SCM</a></div>
+</div></div>
+
+<!-- Application -->
+<div class="app" id="app" hidden>
+  <aside class="side">
+    <div class="brand"><span class="crest">INSAPT</span><span><b>ERP Achats</b><small>Passation des marchés</small></span></div>
+    <nav id="nav"></nav>
+    <div class="foot"><div id="who"></div><a href="index.html">← Portail SCM</a><a href="index.html?goto=manual">Manuel de passation</a></div>
+  </aside>
+  <div>
+    <header class="top">
+      <div class="t"><small id="crumb"></small><h1 id="pageTitle">Tableau de bord</h1></div>
+      <button class="sync" id="syncPill" title="Cliquer pour synchroniser maintenant"><span>Connexion…</span></button>
+      <button class="btn ghost sm" id="profBtn" title="Changer de profil">Profil ▾</button>
+    </header>
+    <main id="view"></main>
+    <div class="foot-brand">ERP Achats INSAPT · Manuel de Passation des Marchés Version 1 · Code des Marchés Publics (Décret N°002130/PR/2020)</div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div id="printZone"></div>
+<script src="accounts.js"></script>
+<script>
+/* =====================================================================
+   INSAPT — ERP Achats (Système de gestion de la passation des marchés)
+   Fondé sur : Manuel de Politiques et Procédures de Passation des Marchés
+   INSAPT, Version 1 (septembre 2026) ; Code des Marchés Publics
+   (Décret N°002130/PR/2020) ; seuils : Décret N°2499/PR/2020.
+   Moteur de flux repris de ForTé ERP Pro (dossiers, packs de clauses,
+   instruments), adapté au circuit de visas INSAPT.
+   ===================================================================== */
+(function () {
+"use strict";
+
+/* ---------------- Constantes ---------------- */
+var GS_URL = "https://script.google.com/macros/s/AKfycbyZr2pxJS1mBqLRQv9Oli5jbbenmD-HHj6AvL_GH49Qp1XAHimIBitIdOUUqxDFyZaKFw/exec";
+var GS_KEY = "INSAPT-SCM-KEY";
+var LS_DB = "insapt.erp.db", LS_DIRTY = "insapt.erp.dirty", LS_FILES = "insapt.erp.files";
+var SS_USER = "insapt.scm.user", SS_SESSION = "insapt.scm.session", SS_PROFILE = "insapt.erp.profile";
+var M = 1000000;
+
+var PROFILES = {
+  requester: { lbl: "Demandeur", ic: "✎", d: "Exprimer un besoin (Formulaire de Demande d'Acquisition), joindre les pièces, suivre ses dossiers." },
+  approval:  { lbl: "Approbation", ic: "✓", d: "Avis du chef de service ; approbation finale du Directeur Général ou de son délégataire dans les limites du Manuel (§4.6.2)." },
+  finance:   { lbl: "Finance", ic: "₣", d: "Certification budgétaire (Bon de Réservation de Crédits), liquidation, ordonnancement et paiement (SOP 06)." },
+  passation: { lbl: "Passation des marchés", ic: "§", d: "Service de Passation des Marchés / CPM : méthode, devis, fournisseur, clauses, bon de commande ou marché, rapprochement des factures." },
+  reception: { lbl: "Réception", ic: "▣", d: "Inspection et réception des biens et services, procès-verbal de réception (PVIR — SOP 05)." }
+};
+var PROFILE_ORDER = ["requester", "approval", "finance", "passation", "reception"];
+
+/* Étapes du circuit (fiche de circulation) */
+var STAGES = [
+  { k: "BROUILLON",      lbl: "Brouillon",                        who: "requester", sla: 0 },
+  { k: "AVIS_CHEF",      lbl: "Avis du chef de service",          who: "approval",  sla: 3 },
+  { k: "PASSATION",      lbl: "Passation : méthode & devis",      who: "passation", sla: 10 },
+  { k: "BUDGET",         lbl: "Certification budgétaire (BRC)",   who: "finance",   sla: 3 },
+  { k: "APPROBATION",    lbl: "Approbation finale",               who: "approval",  sla: 3 },
+  { k: "INSTRUMENT",     lbl: "Bon de commande / marché",          who: "passation", sla: 5 },
+  { k: "RECEPTION",      lbl: "Réception (PVIR)",                 who: "reception", sla: 30 },
+  { k: "RAPPROCHEMENT",  lbl: "Rapprochement facture",            who: "passation", sla: 5 },
+  { k: "PAIEMENT",       lbl: "Liquidation & paiement",           who: "finance",   sla: 45 },
+  { k: "CLOTURE",        lbl: "Clôturé",                          who: "",          sla: 0 }
+];
+var STAGE = {}; STAGES.forEach(function (s, i) { s.i = i; STAGE[s.k] = s; });
+STAGE.REJETE = { k: "REJETE", lbl: "Rejeté", who: "", i: -1, sla: 0 };
+
+var NATURES = { F: "Fournitures", S: "Services courants", T: "Travaux", PI: "Prestations intellectuelles" };
+var CATEGORIES = ["Réactifs & consommables de laboratoire", "Médicaments & produits de santé", "Équipements de laboratoire",
+  "Matériel informatique & bureautique", "Fournitures de bureau", "Mobilier", "Véhicules & logistique",
+  "Maintenance & réparations", "Travaux & aménagements", "Formation & ateliers", "Études & consultance", "Autre"];
+var HEALTH_CATS = ["Réactifs & consommables de laboratoire", "Médicaments & produits de santé"];
+var SECTIONS = ["Direction Générale", "Secrétariat Général", "Direction des Études", "Direction de la Communication, des Statistiques et des Archives",
+  "Agence Comptable", "Laboratoire National de Santé Publique (LNSP / LaBiEp)", "Centre de Veille Sanitaire (CVS)",
+  "Centre de Formation et de Recherche (CFRSP)", "COUSP", "Magasin central"];
+
+/* Bandes de seuils (FCFA TTC) — Manuel §7.1, Art. 9–13 CMP, Décret 2499/PR/2020 */
+var BANDS = {
+  F:  { simp: 30 * M,  aon: 1000 * M },
+  S:  { simp: 30 * M,  aon: 400 * M },
+  T:  { simp: 50 * M,  aon: 2000 * M },
+  PI: { simp: 20 * M,  aon: 500 * M }
+};
+
+/* Packs de clauses (ForTé ERP Pro, pack INSAPT) */
+var PACKS = [
+  { id: "cp_cd", name: "Consultation directe (< 10 M FCFA)", short: "Consultation directe", instr: "BC", minQ: 1,
+    legal: "Art. 13 CMP (Décret N°002130/PR/2020) · Décret N°2499/PR/2020 · Manuel §7.1", approvers: "DG + chef de service + Agence Comptable", delay: "3–7 jours",
+    clauses: [
+      ["Objet et étendue", "Le présent bon de commande porte sur la fourniture des biens/services décrits, conformément aux spécifications validées par le service demandeur de l'INSAPT."],
+      ["Prix et monnaie de règlement", "Les prix sont fermes, non révisables, libellés en FCFA TTC. Aucune majoration ne sera acceptée après émission du bon de commande."],
+      ["Délais de livraison", "Le fournisseur s'engage à livrer dans le délai indiqué au bon de commande. Tout retard non justifié expose le fournisseur aux pénalités prévues par le Code des Marchés Publics."],
+      ["Réception et conformité", "La réception est prononcée par la commission de réception de l'INSAPT (SOP 05). Les biens non conformes sont refusés et remplacés aux frais du fournisseur."],
+      ["Paiement", "Le paiement intervient après réception et présentation d'une facture conforme, après rapprochement à trois (SOP 06), dans un délai qui ne peut excéder quarante-cinq (45) jours (Art. 184 CMP)."],
+      ["Éthique et intégrité", "Le fournisseur atteste n'avoir consenti aucun avantage indu à un agent de l'INSAPT (Chapitre 16 du Manuel — Éthique & anti-corruption)."]] },
+  { id: "cp_ps", name: "Procédure simplifiée — consultation restreinte (≥ 3 devis)", short: "Procédure simplifiée", instr: "LC", minQ: 3,
+    legal: "Art. 9 et 12 CMP · Manuel §6.3 (Règle des trois devis) et §7.1", approvers: "DG + SPM + Agence Comptable", delay: "15–21 jours",
+    clauses: [
+      ["Mise en concurrence", "Le présent marché résulte d'une consultation restreinte d'au moins trois (3) fournisseurs distincts, conformément à la Règle des Trois Devis (Section 6.3 du Manuel)."],
+      ["Pièces contractuelles", "Le marché est constitué de la lettre de commande, des spécifications techniques, de l'offre retenue et du procès-verbal d'analyse comparative des devis."],
+      ["Garantie de bonne exécution", "Une garantie de bonne exécution peut être exigée conformément aux Articles 149 et suivants du CMP (Titre IV — Garanties)."],
+      ["Pénalités de retard", "En cas de retard imputable au titulaire, des pénalités sont appliquées conformément au CMP et déduites des sommes dues."],
+      ["Modification (avenant)", "Toute modification fait l'objet d'un avenant écrit approuvé selon les mêmes règles que le marché initial (Chapitre 9 du Manuel)."],
+      ["Résiliation", "L'INSAPT peut résilier le marché dans les cas prévus par le CMP (résiliation pour faute, pour motif d'intérêt général ou par consentement mutuel)."],
+      ["Règlement des différends", "Les différends sont réglés à l'amiable ; à défaut, selon les voies de recours du CMP."]] },
+  { id: "cp_aon", name: "Appel d'offres national (AON)", short: "Appel d'offres national", instr: "MARCHE", minQ: 1, tender: true,
+    legal: "Art. 9 et 10 CMP · Manuel §7.1–7.4", approvers: "CPM + DG + notification ARMP", delay: "45–60 jours",
+    clauses: [
+      ["Cadre de passation", "Le présent marché est passé par appel d'offres ouvert national, publié et évalué conformément au Dossier d'Appel d'Offres (DAO) et au Chapitre 7 du Manuel."],
+      ["Documents contractuels et ordre de priorité", "Le contrat, le DAO, l'offre du titulaire et les procès-verbaux de la Commission de Passation des Marchés (CPM) forment un tout contractuel ; en cas de contradiction, le contrat prévaut."],
+      ["Garanties", "Les garanties de soumission, de bonne exécution et la retenue de garantie sont constituées et libérées conformément aux Articles 149 à 158 du CMP."],
+      ["Avances et acomptes", "Les avances de démarrage éventuelles sont cautionnées et récupérées conformément au CMP et au Chapitre 11 du Manuel."],
+      ["Contrôle de l'exécution", "L'exécution est suivie par le service bénéficiaire et le SPM (SOP 04) ; les réceptions sont prononcées par la commission de réception (SOP 05)."],
+      ["Sous-traitance", "Toute sous-traitance requiert l'accord écrit préalable de l'INSAPT dans les limites fixées par le CMP."],
+      ["Publication des résultats et délai de recours", "Les résultats sont publiés et le délai de recours observé avant signature (Chapitre 8 du Manuel)."],
+      ["Pénalités, résiliation et sanctions", "Pénalités de retard, résiliation et sanctions s'appliquent conformément aux Titres IV à VII du CMP."]] },
+  { id: "cp_aoi", name: "Appel d'offres international (AOI)", short: "Appel d'offres international", instr: "MARCHE", minQ: 1, tender: true,
+    legal: "Art. 11 CMP · Manuel §7.1 et Annexe U (double conformité PTF)", approvers: "CPM + DG + ARMP", delay: "60–90 jours",
+    clauses: [
+      ["Cadre international", "Marché passé par appel d'offres ouvert international ; la publicité, les délais et les critères respectent le CMP et, le cas échéant, les directives des Partenaires Techniques et Financiers (Annexe U du Manuel)."],
+      ["Monnaies et paiements internationaux", "Les modalités de paiement international et la monnaie de règlement sont fixées au contrat."],
+      ["Incoterms et logistique", "Les conditions de livraison sont définies par référence aux Incoterms® en vigueur, précisant le transfert des risques et les obligations douanières."],
+      ["Normes et certificats", "Les biens sont accompagnés des certificats de conformité, d'origine et d'analyse exigés par la réglementation tchadienne et les spécifications techniques."],
+      ["Garanties et assurances", "Garanties (Titre IV CMP) et assurances transport/responsabilité sont exigées avant tout paiement."],
+      ["Droit applicable", "Le droit tchadien s'applique ; le règlement des litiges suit les voies de recours du CMP, l'arbitrage OHADA pouvant être stipulé."]] },
+  { id: "cp_gg", name: "Gré à gré (entente directe) — cas limitatifs", short: "Gré à gré", instr: "MARCHE", minQ: 1, derog: true,
+    legal: "Art. 45–46 et 100–103 CMP — autorisation préalable du Ministre en charge des Marchés Publics", approvers: "DG + autorisation préalable du Ministre", delay: "Variable",
+    clauses: [
+      ["Justification de la procédure dérogatoire", "Le recours au gré à gré est motivé par écrit (droits exclusifs, raisons techniques, extrême urgence ou force majeure — Art. 101 CMP) et l'autorisation préalable de l'autorité compétente est annexée au marché."],
+      ["Contrôle renforcé", "Le marché est soumis à un contrôle a posteriori renforcé et inscrit au registre des dérogations (Annexe N du Manuel)."],
+      ["Prix de référence", "Le SPM atteste que le prix négocié est cohérent avec l'estimation confidentielle et les prix du marché (Chapitre 5 du Manuel)."],
+      ["Clauses générales", "Les clauses de réception, paiement, garanties, pénalités et résiliation du CMP s'appliquent intégralement."]] },
+  { id: "cp_cpa", name: "Commande via la CPA (produits de santé — Version A)", short: "Circuit CPA", instr: "BCCPA", minQ: 0, cpa: true,
+    legal: "Chapitre 3 du Manuel (Version A) — Cadre de coordination INSAPT–CPA ; Formulaire de coordination (Annexe N)", approvers: "DG + coordination CPA", delay: "Selon calendrier CPA",
+    clauses: [
+      ["Canal d'approvisionnement", "Les produits relevant du périmètre CPA (Chapitre 3) sont commandés via la CPA ; le Formulaire de Coordination CPA (Annexe N) est joint à la commande."],
+      ["Dérogation au canal CPA", "Toute acquisition hors canal CPA de produits de son périmètre suit la procédure de dérogation du Chapitre 3, dûment autorisée et documentée."],
+      ["Qualité pharmaceutique", "Les produits respectent les exigences de qualité, de chaîne du froid et de péremption ; la réception vérifie lots, dates et certificats d'analyse (SOP 05, SOP R-1 à R-4)."],
+      ["Suivi de conformité CPA", "Les indicateurs de conformité CPA (Chapitre 3) sont renseignés pour chaque commande."]] }
+];
+var PACK = {}; PACKS.forEach(function (p) { PACK[p.id] = p; });
+var INSTR = { BC: "BON DE COMMANDE", LC: "LETTRE DE COMMANDE", MARCHE: "MARCHÉ", CONTRAT: "CONTRAT DE PRESTATION DE SERVICES", BCCPA: "BON DE COMMANDE CPA" };
+var INSTR_PFX = { BC: "BC", LC: "LC", MARCHE: "MAR", CONTRAT: "CTR", BCCPA: "BCCPA" };
+
+/* ---------------- Utilitaires ---------------- */
+function $(s, r) { return (r || document).querySelector(s); }
+function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+function nowIso() { return new Date().toISOString(); }
+function uid(p) { return (p || "") + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase(); }
+function num(v) { var n = parseFloat(String(v == null ? "" : v).replace(/\s/g, "").replace(",", ".")); return isNaN(n) ? 0 : n; }
+function fmtN(n) { return Math.round(Number(n) || 0).toLocaleString("fr-FR").replace(/ | /g, " "); }
+function fmtM(n) { return fmtN(n) + " FCFA"; }
+function fmtD(iso) { if (!iso) return "—"; var d = new Date(iso); if (isNaN(d)) return "—"; return ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear(); }
+function fmtDT(iso) { if (!iso) return "—"; var d = new Date(iso); return fmtD(iso) + " " + ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); }
+function daysSince(iso) { if (!iso) return 0; return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000); }
+function fy(iso) { return String(new Date(iso || Date.now()).getFullYear()); }
+
+/* ---------------- Session ---------------- */
+var ME = null, PROFILE = null;
+function loadSession() {
+  var id = sessionStorage.getItem(SS_SESSION);
+  if (!id) return null;
+  if (id === "1") id = "insaptscm";
+  var acc = (window.SCM_ACCOUNTS || []).filter(function (a) { return a.u === id; })[0];
+  return acc || null;
+}
+function can(p) { return !!ME && ME.profiles.indexOf(p) >= 0; }
+function finalLimit(acc) { return acc.final === "all" ? Infinity : acc.final === "lt10" ? 10 * M : 0; }
+
+/* ---------------- Base de données locale ---------------- */
+var DB = { req: {}, sup: {}, bud: {}, meta: { lastSync: "" } };
+var DIRTY = {};
+function loadDB() {
+  try { var d = JSON.parse(localStorage.getItem(LS_DB)); if (d && d.req) DB = d; } catch (e) {}
+  try { DIRTY = JSON.parse(localStorage.getItem(LS_DIRTY)) || {}; } catch (e) { DIRTY = {}; }
+  DB.meta = DB.meta || { lastSync: "" };
+  seed();
+}
+function persist() {
+  try { localStorage.setItem(LS_DB, JSON.stringify(DB)); localStorage.setItem(LS_DIRTY, JSON.stringify(DIRTY)); }
+  catch (e) { toast("Stockage local plein : synchronisez puis rechargez la page.", "err"); }
+}
+function list(coll) { return Object.keys(DB[coll] || {}).map(function (k) { return DB[coll][k]; }); }
+function get(coll, id) { return (DB[coll] || {})[id] || null; }
+/* Toute écriture passe ici : horodatage, marquage pour synchronisation, envoi immédiat. */
+function put(coll, rec) {
+  rec.updated = nowIso();
+  DB[coll][rec.id] = rec;
+  DIRTY[coll + ":" + rec.id] = 1;
+  persist();
+  Sync.soon();
+  return rec;
+}
+
+/* Données de départ (identifiants fixes : jamais dupliquées d'un poste à l'autre). */
+function seed() {
+  var T0 = "2026-01-01T00:00:00.000Z";
+  var sups = [
+    { id: "sup1", code: "FRS-0001", name: "TchadLab Équipements SARL", cat: "Équipements de laboratoire", city: "N'Djaména", phone: "+235 66 00 00 01", email: "contact@tchadlab.td", status: "ACTIF", prequal: true, rating: 4, notes: "Fiche exemple reprise de ForTé ERP — à vérifier par le SPM (Annexe S)." },
+    { id: "sup2", code: "FRS-0002", name: "Sahel Médical & Réactifs", cat: "Réactifs & consommables de laboratoire", city: "N'Djaména", phone: "+235 66 00 00 02", email: "ventes@sahelmed.td", status: "ACTIF", prequal: true, rating: 4, notes: "Fiche exemple — à vérifier par le SPM (Annexe S)." },
+    { id: "sup3", code: "FRS-0003", name: "Bureautique Plus Tchad", cat: "Fournitures de bureau", city: "N'Djaména", phone: "+235 66 00 00 03", email: "info@bureauplus.td", status: "ACTIF", prequal: false, rating: 3, notes: "Fiche exemple — préqualification en cours." }
+  ];
+  var buds = [
+    { id: "b1", code: "FL-2026", line: "Fonctionnement — Laboratoire", year: "2026", amount: 85 * M, source: "Budget de l'État" },
+    { id: "b2", code: "EQ-2026", line: "Équipements & investissements", year: "2026", amount: 120 * M, source: "Budget de l'État" },
+    { id: "b3", code: "AD-2026", line: "Fonctionnement — Administration", year: "2026", amount: 40 * M, source: "Budget de l'État" },
+    { id: "b4", code: "RX-2026", line: "Réactifs & produits de santé", year: "2026", amount: 150 * M, source: "Budget de l'État / CPA" }
+  ];
+  sups.forEach(function (s) { if (!DB.sup[s.id]) { s.updated = T0; s.hist = [{ at: T0, by: "Système", note: "Fiche initiale (exemple)" }]; DB.sup[s.id] = s; } });
+  buds.forEach(function (b) { if (!DB.bud[b.id]) { b.updated = T0; b.hist = [{ at: T0, by: "Système", note: "Ligne initiale (montant indicatif à confirmer par la Finance)" }]; DB.bud[b.id] = b; } });
+}
+
+/* Numérotation par exercice : DA-2026-0001, BRC-2026-0001, BC-2026-0001… */
+function nextNo(prefix, field, year) {
+  var max = 0, re = new RegExp("^" + prefix + "-" + year + "-(\\d+)$");
+  list("req").forEach(function (r) {
+    var v = field.split(".").reduce(function (o, k) { return o && o[k]; }, r);
+    var m = re.exec(v || ""); if (m) max = Math.max(max, +m[1]);
+  });
+  return prefix + "-" + year + "-" + ("000" + (max + 1)).slice(-4);
+}
+/* Après fusion : si deux postes ont attribué le même n° de DA hors ligne, le plus récent est renuméroté. */
+function fixDuplicateNumbers() {
+  var seen = {}, changed = 0;
+  list("req").sort(function (a, b) { return (a.createdAt || "").localeCompare(b.createdAt || ""); }).forEach(function (r) {
+    if (!r.no) return;
+    if (seen[r.no] && seen[r.no] !== r.id) {
+      var old = r.no; r.no = nextNo("DA", "no", fy(r.createdAt));
+      r.history = r.history || []; r.history.push({ at: nowIso(), st: r.status, by: "Système", note: "Renumérotation automatique : " + old + " déjà attribué sur un autre poste." });
+      put("req", r); changed++;
+    }
+    seen[r.no] = r.id;
+  });
+  return changed;
+}
+
+/* ---------------- Règles métier ---------------- */
+function reqEstimate(r) { return (r.items || []).reduce(function (s, i) { return s + num(i.qty) * num(i.pu); }, 0); }
+function isHealth(r) { return HEALTH_CATS.indexOf(r.category) >= 0; }
+function suggestPack(nature, ttc, r) {
+  if (r && isHealth(r) && r.circuit !== "B") return "cp_cpa";
+  var b = BANDS[nature || "F"];
+  if (ttc < 10 * M) return "cp_cd";
+  if (ttc < b.simp) return "cp_ps";
+  if (ttc <= b.aon) return "cp_aon";
+  return "cp_aoi";
+}
+/* Vérifie que la méthode retenue est compatible avec le montant TTC (Manuel §7.1). */
+function methodCheck(packId, nature, ttc) {
+  var p = PACK[packId]; if (!p) return "Choisissez une méthode de passation.";
+  if (p.derog || p.cpa) return "";
+  var b = BANDS[nature || "F"];
+  if (packId === "cp_cd" && ttc >= 10 * M) return "Montant TTC ≥ 10 000 000 FCFA : la consultation directe n'est pas autorisée (Art. 13 CMP).";
+  if (packId === "cp_ps" && ttc >= b.simp) return "Montant TTC au-dessus du seuil de la procédure simplifiée pour " + NATURES[nature].toLowerCase() + " (" + fmtM(b.simp) + ") : appel d'offres requis.";
+  if (packId === "cp_aon" && ttc > b.aon) return "Montant TTC au-dessus du plafond de l'appel d'offres national : appel d'offres international requis (Art. 11).";
+  return "";
+}
+function minQuotes(r, packId, ttc) {
+  var p = PACK[packId]; if (!p) return 0;
+  if (r.urgent && !p.tender && !p.cpa) {               // Manuel §13.2
+    if (ttc < 5 * M) return 1;
+    if (ttc <= 30 * M) return 2;
+  }
+  return p.minQ;
+}
+function ttcOf(r) {
+  var P = r.pass || {}; var ht = num(P.ht), tr = num(P.transport);
+  var tva = P.exo ? 0 : (ht + tr) * num(P.tva) / 100;
+  return Math.round(ht + tr + tva);
+}
+function amountOf(r) { return (r.pass && r.pass.ht) ? ttcOf(r) : reqEstimate(r); }
+function instrTypeFor(r) {
+  var p = PACK[(r.pass || {}).pack]; if (!p) return "BC";
+  if (p.cpa) return "BCCPA";
+  if (p.id === "cp_gg" && ttcOf(r) < 10 * M) return "BC";
+  if ((r.nature === "S" || r.nature === "PI") && (p.id === "cp_aon" || p.id === "cp_aoi" || p.id === "cp_gg")) return "CONTRAT";
+  return p.instr;
+}
+/* Anti-fractionnement (Art. 14–15) : cumul de l'exercice pour la même catégorie et la même section. */
+function splitAlert(r) {
+  var y = fy(r.createdAt), tot = 0, n = 0;
+  list("req").forEach(function (o) {
+    if (o.id === r.id || o.status === "REJETE" || o.status === "BROUILLON") return;
+    if (o.category === r.category && o.section === r.section && fy(o.createdAt) === y) { tot += amountOf(o); n++; }
+  });
+  var me = amountOf(r);
+  if (n && me < 10 * M && tot + me >= 10 * M) return "Cumul " + y + " pour « " + r.category + " » (" + r.section + ") : " + fmtM(tot + me) + " sur " + (n + 1) + " dossiers. Vérifier qu'il ne s'agit pas d'un fractionnement (Art. 14 et 15 CMP).";
+  return "";
+}
+function budgetUse(b) {
+  var reserved = 0, paid = 0;
+  list("req").forEach(function (r) {
+    if (!r.fin || r.fin.budId !== b.id || !r.fin.brc) return;
+    if (r.status === "REJETE") return;
+    if (r.pay && r.pay.paidAt) paid += num(r.pay.amount || r.fin.amount); else reserved += num(r.fin.amount);
+  });
+  return { reserved: reserved, paid: paid, avail: num(b.amount) - reserved - paid };
+}
+function activeSuppliers() { return list("sup").filter(function (s) { return s.status === "ACTIF"; }).sort(function (a, b) { return a.name.localeCompare(b.name, "fr"); }); }
+
+/* Qui peut agir sur un dossier, et pourquoi pas (séparation des tâches). */
+function actionable(r, prof, acc) {
+  acc = acc || ME; prof = prof || PROFILE;
+  if (!acc || !r) return { ok: false };
+  var st = STAGE[r.status]; if (!st) return { ok: false };
+  if (r.status === "BROUILLON") return { ok: prof === "requester" && r.createdBy && r.createdBy.u === acc.u };
+  if (st.who !== prof) return { ok: false };
+  if (acc.profiles.indexOf(prof) < 0) return { ok: false };
+  var mine = r.createdBy && r.createdBy.u === acc.u;
+  if (r.status === "AVIS_CHEF" && mine) return { ok: false, why: "Vous ne pouvez pas donner l'avis sur votre propre demande (séparation des tâches, §4.7)." };
+  if (r.status === "APPROBATION") {
+    if (mine) return { ok: false, why: "Vous ne pouvez pas approuver votre propre demande." };
+    var lim = finalLimit(acc), amt = ttcOf(r);
+    if (!lim) return { ok: false, why: "Approbation finale réservée au Directeur Général et à ses délégataires (§4.6.2)." };
+    if (amt >= lim && !(acc.final === "lt10")) return { ok: false, why: "Montant au-delà de votre limite de délégation." };
+    if (amt >= lim) return { ok: true, interim: true, why: "Montant ≥ 10 000 000 FCFA : approbation par délégataire uniquement en cas d'empêchement du DG constaté par écrit (§4.6.1)." };
+    return { ok: true };
+  }
+  if (r.status === "PAIEMENT" && r.recv && r.recv.by && r.recv.by.u === acc.u)
+    return { ok: false, why: "Le signataire du PV de réception ne peut pas ordonnancer le paiement (§4.6.2)." };
+  if (r.status === "BUDGET" && r.pass && r.pass.by && r.pass.by.u === acc.u && acc.u !== "insaptscm")
+    return { ok: false, why: "L'agent ayant conduit la passation ne peut pas certifier le budget du même dossier." };
+  return { ok: true };
+}
+function queueFor(prof, acc) {
+  return list("req").filter(function (r) { return r.status !== "BROUILLON" && actionable(r, prof, acc).ok; })
+    .sort(function (a, b) { return (a.stageAt || "").localeCompare(b.stageAt || ""); });
+}
+function advance(r, to, note, extra) {
+  r.history = r.history || [];
+  r.history.push(Object.assign({ at: nowIso(), from: r.status, st: to, by: ME.name, u: ME.u, prof: PROFILES[PROFILE] ? PROFILES[PROFILE].lbl : "", note: note || "" }, extra || {}));
+  r.status = to; r.stageAt = nowIso();
+  put("req", r);
+}
+
+/* ---------------- Synchronisation Google Sheets ----------------
+   Enregistrement par enregistrement, jamais d'effacement. Le serveur refuse une
+   écriture plus ancienne que la sienne et renvoie sa version, que l'on fusionne. */
+var Sync = {
+  state: "local", timer: null, busy: false,
+  set: function (s, msg) { this.state = s; var el = $("#syncPill"); if (!el) return;
+    el.className = "sync " + s; el.querySelector("span").textContent = msg; },
+  soon: function () { var me = this; clearTimeout(this.timer); this.timer = setTimeout(function () { me.run(); }, 600); },
+  call: function (body) {
+    return fetch(GS_URL, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(Object.assign({ key: GS_KEY }, body)) }).then(function (r) { return r.json(); });
+  },
+  pull: function () {
+    var url = GS_URL + "?action=erp_list&key=" + encodeURIComponent(GS_KEY);
+    return fetch(url, { redirect: "follow" }).then(function (r) { return r.json(); }).then(function (j) {
+      if (!j || !j.ok) throw new Error((j && j.error) || "réponse invalide");
+      var changed = 0;
+      (j.records || []).forEach(function (x) {
+        if (!DB[x.coll]) return;
+        var cur = DB[x.coll][x.id];
+        if (!cur || (x.updated || "") > (cur.updated || "")) { x.data.updated = x.updated; DB[x.coll][x.id] = x.data; delete DIRTY[x.coll + ":" + x.id]; changed++; }
+      });
+      return changed;
+    });
+  },
+  push: function () {
+    var keys = Object.keys(DIRTY); if (!keys.length) return Promise.resolve(0);
+    var recs = keys.map(function (k) { var p = k.split(":"), c = p[0], id = p.slice(1).join(":"); var d = DB[c] && DB[c][id];
+      return d ? { coll: c, id: id, updated: d.updated, data: d } : null; }).filter(Boolean);
+    return this.call({ action: "erp_bulk", recs: recs }).then(function (j) {
+      if (!j || !j.ok) throw new Error((j && j.error) || "écriture refusée");
+      var staleIds = {};
+      (j.stale || []).forEach(function (s) {
+        if (s.data && DB[s.coll]) { s.data.updated = s.updated; DB[s.coll][s.id] = s.data; staleIds[s.coll + ":" + s.id] = 1; }
+      });
+      keys.forEach(function (k) { delete DIRTY[k]; });
+      if (Object.keys(staleIds).length) toast("Un dossier avait été modifié entre-temps sur un autre poste : la version la plus récente a été chargée.", "warn");
+      return recs.length;
+    });
+  },
+  run: function () {
+    var me = this; if (me.busy) return Promise.resolve(); me.busy = true;
+    me.set("busy", "Synchronisation…");
+    return me.push().then(function () { return me.pull(); }).then(function (n) {
+      var renum = fixDuplicateNumbers();
+      DB.meta.lastSync = nowIso(); persist();
+      var pending = Object.keys(DIRTY).length;
+      var done = function () { var pend = Object.keys(DIRTY).length;
+        me.set("ok", "En ligne · " + new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) + (pend ? " · " + pend + " en attente" : "")); return n; };
+      if (renum) return me.push().then(done);
+      me.set("ok", "En ligne · " + new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) + (pending ? " · " + pending + " en attente" : ""));
+      return n;
+    }).then(function (n) { if (n && window.ERP_UI) window.ERP_UI.refresh(); })
+      .catch(function () {
+        var pending = Object.keys(DIRTY).length;
+        me.set("err", "Hors ligne" + (pending ? " · " + pending + " modification(s) en attente" : " — données locales"));
+      }).then(function () { me.busy = false; });
+  },
+  start: function () {
+    var me = this; me.run();
+    setInterval(function () { me.run(); }, 40000);
+    window.addEventListener("online", function () { me.run(); });
+  }
+};
+
+/* Pièces jointes : envoyées au serveur par morceaux ; copie locale tant que l'envoi n'est pas confirmé. */
+var Files = {
+  local: function () { try { return JSON.parse(localStorage.getItem(LS_FILES)) || {}; } catch (e) { return {}; } },
+  keep: function (id, o) { var L = this.local(); L[id] = o; try { localStorage.setItem(LS_FILES, JSON.stringify(L)); return true; } catch (e) { return false; } },
+  drop: function (id) { var L = this.local(); delete L[id]; try { localStorage.setItem(LS_FILES, JSON.stringify(L)); } catch (e) {} },
+  add: function (file) {
+    return new Promise(function (res, rej) {
+      if (file.size > 2 * 1024 * 1024) { rej(new Error("Fichier trop volumineux (2 Mo maximum) : " + file.name)); return; }
+      var fr = new FileReader();
+      fr.onload = function () {
+        var id = uid("F"), o = { name: file.name, type: file.type || "application/octet-stream", data: fr.result };
+        var kept = Files.keep(id, o);
+        var meta = { id: id, name: file.name, size: file.size, type: o.type, at: nowIso(), by: ME.name, sent: false };
+        Sync.call({ action: "erp_file_put", id: id, name: o.name, type: o.type, data: o.data })
+          .then(function (j) { if (j && j.ok) { meta.sent = true; Files.drop(id); } })
+          .catch(function () {})
+          .then(function () { if (!kept && !meta.sent) rej(new Error("Pièce non enregistrée (hors ligne et stockage local plein).")); else res(meta); });
+      };
+      fr.onerror = function () { rej(new Error("Lecture du fichier impossible.")); };
+      fr.readAsDataURL(file);
+    });
+  },
+  open: function (meta) {
+    var L = this.local()[meta.id];
+    var show = function (o) { var a = document.createElement("a"); a.href = o.data; a.download = o.name; document.body.appendChild(a); a.click(); a.remove(); };
+    if (L) { show(L); return; }
+    toast("Téléchargement de la pièce…");
+    fetch(GS_URL + "?action=erp_file_get&key=" + encodeURIComponent(GS_KEY) + "&id=" + encodeURIComponent(meta.id), { redirect: "follow" })
+      .then(function (r) { return r.json(); }).then(function (j) { if (j.ok) show(j); else toast("Pièce introuvable sur le serveur.", "err"); })
+      .catch(function () { toast("Hors ligne : pièce indisponible sur ce poste.", "err"); });
+  },
+  /* renvoie les pièces restées en local lors d'une coupure */
+  retry: function () {
+    var L = this.local();
+    Object.keys(L).forEach(function (id) {
+      var o = L[id];
+      Sync.call({ action: "erp_file_put", id: id, name: o.name, type: o.type, data: o.data }).then(function (j) {
+        if (j && j.ok) { Files.drop(id); list("req").forEach(function (r) { var ch = false;
+          (r.files || []).forEach(function (f) { if (f.id === id && !f.sent) { f.sent = true; ch = true; } });
+          if (ch) put("req", r); }); }
+      }).catch(function () {});
+    });
+  }
+};
+
+/* ---------------- Toast ---------------- */
+function toast(msg, kind) {
+  var t = $("#toast"); if (!t) return;
+  t.textContent = msg; t.className = "toast on " + (kind || "");
+  clearTimeout(t._h); t._h = setTimeout(function () { t.className = "toast " + (kind || ""); }, 4200);
+}
+
+window.ERP = {
+  GS_URL: GS_URL, PROFILES: PROFILES, PROFILE_ORDER: PROFILE_ORDER, STAGES: STAGES, STAGE: STAGE, NATURES: NATURES,
+  CATEGORIES: CATEGORIES, SECTIONS: SECTIONS, BANDS: BANDS, PACKS: PACKS, PACK: PACK, INSTR: INSTR, INSTR_PFX: INSTR_PFX, M: M,
+  $: $, $$: $$, esc: esc, nowIso: nowIso, uid: uid, num: num, fmtN: fmtN, fmtM: fmtM, fmtD: fmtD, fmtDT: fmtDT, daysSince: daysSince, fy: fy,
+  loadSession: loadSession, can: can, finalLimit: finalLimit, loadDB: loadDB, persist: persist, list: list, get: get, put: put, nextNo: nextNo,
+  reqEstimate: reqEstimate, isHealth: isHealth, suggestPack: suggestPack, methodCheck: methodCheck, minQuotes: minQuotes, ttcOf: ttcOf,
+  amountOf: amountOf, instrTypeFor: instrTypeFor, splitAlert: splitAlert, budgetUse: budgetUse, activeSuppliers: activeSuppliers,
+  actionable: actionable, queueFor: queueFor, advance: advance, Sync: Sync, Files: Files, toast: toast, fixDuplicateNumbers: fixDuplicateNumbers,
+  get ME() { return ME; }, set ME(v) { ME = v; }, get PROFILE() { return PROFILE; }, set PROFILE(v) { PROFILE = v; },
+  get DB() { return DB; }, get DIRTY() { return DIRTY; },
+  SS_PROFILE: SS_PROFILE, SS_SESSION: SS_SESSION, SS_USER: SS_USER
+};
+})();
+
+</script>
+<script>
+/* INSAPT ERP Achats — interface */
+(function () {
+"use strict";
+var E = window.ERP, $ = E.$, $$ = E.$$, esc = E.esc, fmtM = E.fmtM, fmtN = E.fmtN, fmtD = E.fmtD, fmtDT = E.fmtDT, num = E.num;
+var VIEW = "home", PARAM = "";
+
+/* ================= Navigation ================= */
+var NAV = {
+  requester: [["home", "Accueil"], ["new", "Nouvelle demande"], ["mine", "Mes demandes"], ["register", "Registre des dossiers"], ["suppliers", "Fournisseurs"], ["rules", "Seuils & clauses"], ["journal", "Journal d'audit"], ["help", "Aide"]],
+  approval:  [["home", "Accueil"], ["queue", "À approuver"], ["register", "Registre des dossiers"], ["budget", "Budget"], ["rules", "Seuils & clauses"], ["journal", "Journal d'audit"], ["help", "Aide"]],
+  finance:   [["home", "Accueil"], ["queue", "À traiter (BRC & paiements)"], ["budget", "Budget"], ["register", "Registre des dossiers"], ["journal", "Journal d'audit"], ["help", "Aide"]],
+  passation: [["home", "Accueil"], ["queue", "À traiter (passation)"], ["register", "Registre des dossiers"], ["suppliers", "Fournisseurs"], ["rules", "Seuils & clauses"], ["journal", "Journal d'audit"], ["help", "Aide"]],
+  reception: [["home", "Accueil"], ["queue", "À réceptionner"], ["register", "Registre des dossiers"], ["journal", "Journal d'audit"], ["help", "Aide"]]
+};
+var TITLES = { home: "Tableau de bord", new: "Formulaire de Demande d'Acquisition (FDA)", mine: "Mes demandes", queue: "File de travail", register: "Registre des dossiers",
+  suppliers: "Répertoire des fournisseurs (Annexe S)", budget: "Lignes budgétaires et consommation", rules: "Seuils de passation & packs de clauses", journal: "Journal d'audit", help: "Aide", dossier: "Dossier", edit: "Modifier la demande" };
+
+function go(v, p) { location.hash = "#/" + v + (p ? "/" + encodeURIComponent(p) : ""); }
+function route() {
+  var h = (location.hash || "#/home").slice(2).split("/");
+  VIEW = h[0] || "home"; PARAM = h[1] ? decodeURIComponent(h[1]) : "";
+  if (!TITLES[VIEW]) VIEW = "home";
+  render();
+}
+function buildNav() {
+  var q = E.queueFor(E.PROFILE).length;
+  $("#nav").innerHTML = NAV[E.PROFILE].map(function (n) {
+    var badge = n[0] === "queue" && q ? '<b class="badge">' + q + "</b>" : "";
+    return '<a href="#/' + n[0] + '" class="' + (VIEW === n[0] || (VIEW === "dossier" && n[0] === "register") ? "on" : "") + '">' + esc(n[1]) + badge + "</a>";
+  }).join("");
+}
+function render() {
+  if (!E.ME || !E.PROFILE) return;
+  buildNav();
+  $("#pageTitle").textContent = TITLES[VIEW];
+  $("#crumb").textContent = E.PROFILES[E.PROFILE].lbl;
+  var el = $("#view"); el.innerHTML = "";
+  ({ home: vHome, new: vNew, edit: vNew, mine: vMine, queue: vQueue, register: vRegister, dossier: vDossier, suppliers: vSuppliers, budget: vBudget, rules: vRules, journal: vJournal, help: vHelp }[VIEW])(el);
+  window.scrollTo(0, 0);
+}
+window.ERP_UI = { refresh: function () { var a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && $("#view").contains(a)) { buildNav(); return; } render(); } };
+
+/* ================= Petits composants ================= */
+function stChip(st) { var s = E.STAGE[st] || { lbl: st }; return '<span class="chip st-' + esc(st) + '">' + esc(s.lbl) + "</span>"; }
+function kpi(n, l, cls, sub) { return '<div class="kpi ' + (cls || "") + '"><b>' + n + "</b><span>" + esc(l) + "</span>" + (sub ? "<small>" + esc(sub) + "</small>" : "") + "</div>"; }
+function empty(t, d, act) { return '<div class="empty"><b>' + esc(t) + "</b><p>" + esc(d) + "</p>" + (act || "") + "</div>"; }
+function overdue(r) { var s = E.STAGE[r.status]; return s && s.sla && E.daysSince(r.stageAt) > s.sla; }
+function reqRow(r, cols) {
+  var amt = E.amountOf(r), od = overdue(r);
+  return '<tr data-open="' + esc(r.id) + '"><td class="mono">' + esc(r.no || "—") + '</td><td><b class="t">' + esc(r.title) + '</b><small>' + esc(r.section) + " · " + esc(r.category) + (r.urgent ? ' · <em class="urg">URGENT</em>' : "") + "</small></td>" +
+    "<td>" + stChip(r.status) + (od ? '<small class="late">+' + (E.daysSince(r.stageAt) - E.STAGE[r.status].sla) + " j de retard</small>" : "") + "</td>" +
+    '<td class="num">' + fmtN(amt) + '</td><td class="mono">' + fmtD(r.createdAt) + "</td><td>" + esc((r.createdBy || {}).name || "") + "</td></tr>";
+}
+function reqTable(rows, emptyMsg) {
+  if (!rows.length) return empty("Aucun dossier", emptyMsg || "Rien à afficher pour le moment.");
+  return '<div class="tw"><table class="tb"><thead><tr><th>N° DA</th><th>Objet</th><th>Étape</th><th class="num">Montant (FCFA)</th><th>Créé le</th><th>Demandeur</th></tr></thead><tbody>' +
+    rows.map(function (r) { return reqRow(r); }).join("") + "</tbody></table></div>";
+}
+function wireRows(el) { $$("tr[data-open]", el).forEach(function (tr) { tr.onclick = function () { go("dossier", tr.dataset.open); }; }); }
+function csv(name, head, rows) {
+  var c = function (v) { v = String(v == null ? "" : v); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  var t = [head.map(c).join(";")].concat(rows.map(function (r) { return r.map(c).join(";"); })).join("\r\n");
+  var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + t], { type: "text/csv;charset=utf-8" }));
+  a.download = "INSAPT_ERP_" + name + "_" + new Date().toISOString().slice(0, 10) + ".csv"; document.body.appendChild(a); a.click(); a.remove();
+  E.toast("Export CSV : " + rows.length + " lignes", "ok");
+}
+
+/* ================= Accueil ================= */
+function vHome(el) {
+  var all = E.list("req"), live = all.filter(function (r) { return ["BROUILLON", "CLOTURE", "REJETE"].indexOf(r.status) < 0; });
+  var q = E.queueFor(E.PROFILE), late = live.filter(overdue), y = E.fy();
+  var engaged = all.filter(function (r) { return r.fin && r.fin.brc && r.status !== "REJETE" && E.fy(r.createdAt) === y; }).reduce(function (s, r) { return s + num(r.fin.amount); }, 0);
+  var closed = all.filter(function (r) { return r.status === "CLOTURE"; });
+  var cyc = closed.length ? Math.round(closed.reduce(function (s, r) { return s + (new Date(r.stageAt) - new Date(r.submittedAt || r.createdAt)) / 86400000; }, 0) / closed.length) : 0;
+  var h = '<div class="kpis">' +
+    kpi(q.length, "À traiter — " + E.PROFILES[E.PROFILE].lbl, q.length ? "hot" : "") +
+    kpi(live.length, "Dossiers en cours", "") +
+    kpi(late.length, "Dossiers en retard", late.length ? "bad" : "ok", "Délai de l'étape dépassé") +
+    kpi(fmtN(engaged), "Crédits engagés " + y + " (FCFA)", "") +
+    kpi(closed.length, "Dossiers clôturés", "", cyc ? "Cycle moyen : " + cyc + " j" : "") + "</div>";
+  // pipeline
+  var mx = 1, cnt = {};
+  E.STAGES.forEach(function (s) { cnt[s.k] = all.filter(function (r) { return r.status === s.k; }).length; mx = Math.max(mx, cnt[s.k]); });
+  h += '<div class="grid2"><section class="card"><h3>Dossiers par étape du circuit</h3><div class="pipe">' + E.STAGES.map(function (s) {
+    return '<div class="pr"><span>' + esc(s.lbl) + '</span><i><em style="width:' + (cnt[s.k] / mx * 100) + '%"></em></i><b>' + cnt[s.k] + "</b></div>"; }).join("") + "</div></section>";
+  // alerts
+  var al = [];
+  late.slice(0, 6).forEach(function (r) { al.push(["bad", r.no + " — " + E.STAGE[r.status].lbl + " depuis " + E.daysSince(r.stageAt) + " j (délai " + E.STAGE[r.status].sla + " j)", r.id]); });
+  E.list("bud").forEach(function (b) { var u = E.budgetUse(b), pct = num(b.amount) ? (u.reserved + u.paid) / num(b.amount) : 0; if (pct >= 0.9) al.push(["warn", "Ligne " + b.code + " consommée à " + Math.round(pct * 100) + " %", ""]); });
+  live.forEach(function (r) { var s = E.splitAlert(r); if (s) al.push(["warn", r.no + " : risque de fractionnement", r.id]); });
+  live.filter(function (r) { return r.ppm === "non"; }).slice(0, 4).forEach(function (r) { al.push(["warn", r.no + " : besoin non inscrit au PPM", r.id]); });
+  h += '<section class="card"><h3>Alertes</h3>' + (al.length ? '<ul class="alerts">' + al.slice(0, 12).map(function (a) {
+    return '<li class="' + a[0] + '"' + (a[2] ? ' data-go="' + esc(a[2]) + '"' : "") + ">" + esc(a[1]) + "</li>"; }).join("") + "</ul>" : empty("Aucune alerte", "Aucun dossier en retard, aucune ligne budgétaire saturée.")) + "</section></div>";
+  h += '<section class="card"><div class="ch"><h3>Ma file — ' + esc(E.PROFILES[E.PROFILE].lbl) + "</h3>" +
+    (E.PROFILE === "requester" ? '<button class="btn" id="bNew">+ Nouvelle demande</button>' : "") + "</div>" +
+    reqTable(E.PROFILE === "requester" ? all.filter(function (r) { return r.createdBy && r.createdBy.u === E.ME.u; }).sort(byUpd).slice(0, 8) : q.slice(0, 10),
+      E.PROFILE === "requester" ? "Vous n'avez encore créé aucune demande." : "Aucun dossier n'attend d'action de votre part.") + "</section>";
+  el.innerHTML = h; wireRows(el);
+  $$("[data-go]", el).forEach(function (li) { li.onclick = function () { go("dossier", li.dataset.go); }; });
+  if ($("#bNew")) $("#bNew").onclick = function () { go("new"); };
+}
+function byUpd(a, b) { return (b.updated || "").localeCompare(a.updated || ""); }
+
+/* ================= Files de travail ================= */
+function vQueue(el) {
+  var q = E.queueFor(E.PROFILE);
+  var groups = {};
+  q.forEach(function (r) { (groups[r.status] = groups[r.status] || []).push(r); });
+  var h = '<p class="lede">' + esc(E.PROFILES[E.PROFILE].d) + "</p>";
+  if (!q.length) h += empty("Rien à traiter", "Aucun dossier n'attend d'action de votre part pour ce profil.");
+  E.STAGES.forEach(function (s) { if (groups[s.k]) h += '<section class="card"><h3>' + esc(s.lbl) + " <small>(" + groups[s.k].length + ")</small></h3>" + reqTable(groups[s.k]) + "</section>"; });
+  // dossiers visibles mais bloqués par la séparation des tâches
+  var blocked = E.list("req").filter(function (r) { var a = E.actionable(r); return !a.ok && a.why && E.STAGE[r.status] && E.STAGE[r.status].who === E.PROFILE; });
+  if (blocked.length) h += '<section class="card muted"><h3>Dossiers que vous ne pouvez pas traiter</h3><p class="small">Séparation des tâches (§4.6–4.7 du Manuel) : un autre agent habilité doit les traiter.</p>' + reqTable(blocked) + "</section>";
+  el.innerHTML = h; wireRows(el);
+}
+function vMine(el) {
+  var rows = E.list("req").filter(function (r) { return r.createdBy && r.createdBy.u === E.ME.u; }).sort(byUpd);
+  el.innerHTML = '<div class="bar"><button class="btn" id="bNew">+ Nouvelle demande</button></div><section class="card">' + reqTable(rows, "Créez votre première demande d'acquisition.") + "</section>";
+  wireRows(el); $("#bNew").onclick = function () { go("new"); };
+}
+
+/* ================= Registre ================= */
+function vRegister(el) {
+  var st = sessionStorage.getItem("erp.f.st") || "", q = sessionStorage.getItem("erp.f.q") || "", sec = sessionStorage.getItem("erp.f.sec") || "";
+  var h = '<div class="filters"><input id="fq" placeholder="Rechercher : n°, objet, fournisseur, demandeur…" value="' + esc(q) + '">' +
+    '<select id="fst"><option value="">Toutes les étapes</option>' + E.STAGES.concat([E.STAGE.REJETE]).map(function (s) { return '<option value="' + s.k + '"' + (st === s.k ? " selected" : "") + ">" + esc(s.lbl) + "</option>"; }).join("") + "</select>" +
+    '<select id="fsec"><option value="">Toutes les sections</option>' + E.SECTIONS.map(function (s) { return "<option" + (sec === s ? " selected" : "") + ">" + esc(s) + "</option>"; }).join("") + "</select>" +
+    '<button class="btn ghost" id="bCsv">Exporter CSV</button></div><section class="card" id="regT"></section>';
+  el.innerHTML = h;
+  var draw = function () {
+    q = $("#fq").value.toLowerCase(); st = $("#fst").value; sec = $("#fsec").value;
+    sessionStorage.setItem("erp.f.q", q); sessionStorage.setItem("erp.f.st", st); sessionStorage.setItem("erp.f.sec", sec);
+    var rows = E.list("req").filter(function (r) {
+      if (r.status === "BROUILLON" && !(r.createdBy && r.createdBy.u === E.ME.u)) return false;
+      if (st && r.status !== st) return false; if (sec && r.section !== sec) return false;
+      if (q) { var sup = E.get("sup", (r.pass || {}).supplier) || {}; if ([r.no, r.title, r.category, sup.name, (r.createdBy || {}).name, (r.instr || {}).no].join(" ").toLowerCase().indexOf(q) < 0) return false; }
+      return true; }).sort(byUpd);
+    $("#regT").innerHTML = '<p class="small">' + rows.length + " dossier(s)</p>" + reqTable(rows, "Aucun dossier ne correspond aux filtres.");
+    wireRows($("#regT")); return rows;
+  };
+  var rows = draw();
+  $("#fq").oninput = function () { rows = draw(); }; $("#fst").onchange = function () { rows = draw(); }; $("#fsec").onchange = function () { rows = draw(); };
+  $("#bCsv").onclick = function () {
+    csv("registre", ["N° DA", "Objet", "Section", "Catégorie", "Nature", "Étape", "Urgent", "Inscrit PPM", "Méthode", "Fournisseur", "Montant estimé", "Montant TTC", "N° BRC", "Ligne budgétaire", "Instrument", "N° instrument", "N° PVIR", "N° facture", "N° mandat", "Payé le", "Demandeur", "Créé le", "Mis à jour"],
+      rows.map(function (r) { var P = r.pass || {}, F = r.fin || {}, b = E.get("bud", F.budId) || {}, s = E.get("sup", P.supplier) || {};
+        return [r.no, r.title, r.section, r.category, E.NATURES[r.nature], (E.STAGE[r.status] || {}).lbl, r.urgent ? "oui" : "non", r.ppm, (E.PACK[P.pack] || {}).short, s.name, E.reqEstimate(r), P.ht ? E.ttcOf(r) : "",
+          F.brc, b.code, (r.instr || {}).type ? E.INSTR[r.instr.type] : "", (r.instr || {}).no, (r.recv || {}).no, (r.inv || {}).no, (r.pay || {}).mandat, fmtD((r.pay || {}).paidAt), (r.createdBy || {}).name, fmtD(r.createdAt), fmtDT(r.updated)]; }));
+  };
+}
+
+/* ================= Nouvelle demande (FDA) ================= */
+function vNew(el) {
+  var r = PARAM ? E.get("req", PARAM) : null;
+  if (r && !(r.status === "BROUILLON" && r.createdBy && r.createdBy.u === E.ME.u)) r = null;
+  if (!E.can("requester")) { el.innerHTML = empty("Profil Demandeur requis", "Changez de profil pour créer une demande."); return; }
+  r = r || { items: [{ desc: "", qty: 1, unit: "unité", pu: "" }], nature: "F", ppm: "oui", circuit: "A", files: [], section: "", category: "" };
+  var h = '<form id="fda" class="card form" autocomplete="off"><div class="fh"><b>FDA — Formulaire de Demande d\'Acquisition</b><small>SOP 01 — Réquisition et planification des marchés (Annexe P)</small></div>' +
+    '<div class="g2"><label>Objet de la demande *<input name="title" required maxlength="140" value="' + esc(r.title || "") + '" placeholder="Ex. : Réactifs PCR pour la surveillance de la dengue"></label>' +
+    '<label>Section / service demandeur *<select name="section" required><option value="">— Choisir —</option>' + E.SECTIONS.map(function (s) { return "<option" + (r.section === s ? " selected" : "") + ">" + esc(s) + "</option>"; }).join("") + "</select></label></div>" +
+    '<div class="g3"><label>Catégorie *<select name="category" required><option value="">— Choisir —</option>' + E.CATEGORIES.map(function (s) { return "<option" + (r.category === s ? " selected" : "") + ">" + esc(s) + "</option>"; }).join("") + "</select></label>" +
+    '<label>Nature du marché *<select name="nature">' + Object.keys(E.NATURES).map(function (k) { return '<option value="' + k + '"' + (r.nature === k ? " selected" : "") + ">" + E.NATURES[k] + "</option>"; }).join("") + "</select></label>" +
+    '<label>Date souhaitée de livraison<input type="date" name="needBy" value="' + esc(r.needBy || "") + '"></label></div>' +
+    '<div class="g3"><label>Inscrit au Plan de Passation (PPM) ? *<select name="ppm"><option value="oui"' + (r.ppm === "oui" ? " selected" : "") + '>Oui</option><option value="non"' + (r.ppm === "non" ? " selected" : "") + '>Non — révision du PPM requise</option></select></label>' +
+    '<label>Réf. ligne PPM<input name="ppmRef" value="' + esc(r.ppmRef || "") + '" placeholder="Ex. : PPM-2026-L12"></label>' +
+    '<label class="chk"><input type="checkbox" name="urgent"' + (r.urgent ? " checked" : "") + '> Achat d\'urgence (Chapitre 13)</label></div>' +
+    '<div id="urgBox" class="note warn"' + (r.urgent ? "" : " hidden") + '><b>Urgence (§13.2)</b> &lt; 5 M : mémo d\'urgence + 1 devis · 5 à 30 M : déclaration d\'urgence + 2 devis · &gt; 30 M : rapport d\'urgence, notification du PCA et procédure légale (§13.3).<label>Réf. du mémo / de la déclaration d\'urgence<input name="urgRef" value="' + esc(r.urgRef || "") + '"></label></div>' +
+    '<div id="healthBox" class="note"' + (E.isHealth(r) ? "" : " hidden") + '><b>Produits de santé</b> — circuit applicable :<label class="chk"><input type="radio" name="circuit" value="A"' + (r.circuit !== "B" ? " checked" : "") + '> Version A — commande via la CPA (Chapitre 3)</label><label class="chk"><input type="radio" name="circuit" value="B"' + (r.circuit === "B" ? " checked" : "") + '> Version B — passation directe par la CPM</label></div>' +
+    '<h4>Articles demandés</h4><div class="tw"><table class="tb items"><thead><tr><th>Désignation & spécifications</th><th class="num">Qté</th><th>Unité</th><th class="num">P.U. estimé (FCFA)</th><th class="num">Total</th><th></th></tr></thead><tbody id="itBody"></tbody></table></div>' +
+    '<div class="bar"><button type="button" class="btn ghost sm" id="addIt">+ Ajouter une ligne</button><span class="spacer"></span><span class="tot">Estimation : <b id="estT">0</b> FCFA <small id="estM"></small></span></div>' +
+    '<label>Justification du besoin *<textarea name="just" required rows="4" placeholder="Pourquoi ce besoin, quel programme ou activité, conséquence d\'un non-achat…">' + esc(r.just || "") + "</textarea></label>" +
+    '<label>Pièces jointes (spécifications, proforma, mémo…)<input type="file" id="fdaFiles" multiple></label><div id="fdaFileList" class="files"></div>' +
+    '<div id="splitBox" class="note warn" hidden></div>' +
+    '<div class="bar end"><button type="button" class="btn ghost" id="saveDraft">Enregistrer le brouillon</button><button class="btn" type="submit">Soumettre au chef de service</button></div></form>';
+  el.innerHTML = h;
+  var f = $("#fda"), files = (r.files || []).slice();
+  var drawItems = function () {
+    $("#itBody").innerHTML = r.items.map(function (it, i) {
+      return '<tr><td><input data-i="' + i + '" data-k="desc" value="' + esc(it.desc) + '" placeholder="Désignation précise, spécifications techniques"></td>' +
+        '<td><input class="num" data-i="' + i + '" data-k="qty" type="number" min="0" step="any" value="' + esc(it.qty) + '"></td>' +
+        '<td><input data-i="' + i + '" data-k="unit" value="' + esc(it.unit) + '"></td>' +
+        '<td><input class="num" data-i="' + i + '" data-k="pu" type="number" min="0" step="any" value="' + esc(it.pu) + '"></td>' +
+        '<td class="num">' + fmtN(num(it.qty) * num(it.pu)) + '</td><td>' + (r.items.length > 1 ? '<button type="button" class="x" data-del="' + i + '" title="Supprimer la ligne">×</button>' : "") + "</td></tr>"; }).join("");
+    $$("#itBody input").forEach(function (inp) { inp.oninput = function () { r.items[+inp.dataset.i][inp.dataset.k] = inp.value; recalc(); var td = inp.closest("tr").children[4]; td.textContent = fmtN(num(r.items[+inp.dataset.i].qty) * num(r.items[+inp.dataset.i].pu)); }; });
+    $$("#itBody [data-del]").forEach(function (b) { b.onclick = function () { r.items.splice(+b.dataset.del, 1); drawItems(); recalc(); }; });
+  };
+  var recalc = function () {
+    var t = E.reqEstimate(r); $("#estT").textContent = fmtN(t);
+    var tmp = Object.assign({}, r, { category: f.category.value, circuit: (f.querySelector("[name=circuit]:checked") || {}).value });
+    var p = E.PACK[E.suggestPack(f.nature.value, t, tmp)];
+    $("#estM").textContent = t ? "→ méthode indicative : " + p.short : "";
+    tmp.section = f.section.value; tmp.createdAt = r.createdAt || E.nowIso();
+    var s = t ? E.splitAlert(tmp) : ""; $("#splitBox").hidden = !s; $("#splitBox").textContent = s;
+  };
+  var drawFiles = function () { $("#fdaFileList").innerHTML = files.map(function (x, i) { return '<span class="file">' + esc(x.name) + ' <button type="button" data-rf="' + i + '">×</button></span>'; }).join("");
+    $$("[data-rf]").forEach(function (b) { b.onclick = function () { files.splice(+b.dataset.rf, 1); drawFiles(); }; }); };
+  drawItems(); recalc(); drawFiles();
+  $("#addIt").onclick = function () { r.items.push({ desc: "", qty: 1, unit: "unité", pu: "" }); drawItems(); };
+  f.urgent.onchange = function () { $("#urgBox").hidden = !f.urgent.checked; };
+  f.category.onchange = function () { $("#healthBox").hidden = E.CATEGORIES.indexOf(f.category.value) > 1 || !f.category.value; recalc(); };
+  f.nature.onchange = recalc; f.section.onchange = recalc;
+  $$("[name=circuit]", f).forEach(function (x) { x.onchange = recalc; });
+  $("#fdaFiles").onchange = function (ev) { addFiles(ev.target.files, files, drawFiles); ev.target.value = ""; };
+  var collect = function () {
+    ["title", "section", "category", "nature", "needBy", "ppm", "ppmRef", "just", "urgRef"].forEach(function (k) { r[k] = (f[k].value || "").trim(); });
+    r.urgent = f.urgent.checked; r.circuit = (f.querySelector("[name=circuit]:checked") || {}).value || "A";
+    r.items = r.items.filter(function (it) { return (it.desc || "").trim(); }); if (!r.items.length) r.items = [{ desc: "", qty: 1, unit: "unité", pu: "" }];
+    r.files = files; r.estimate = E.reqEstimate(r);
+  };
+  var saveNew = function (submit) {
+    collect();
+    if (!r.id) { r.id = E.uid("R"); r.createdAt = E.nowIso(); r.createdBy = { u: E.ME.u, name: E.ME.name }; r.status = "BROUILLON"; r.history = [{ at: r.createdAt, st: "BROUILLON", by: E.ME.name, u: E.ME.u, prof: "Demandeur", note: "Création de la demande" }]; r.stageAt = r.createdAt; }
+    if (submit) {
+      if (!r.title || !r.section || !r.category || !r.just) { E.toast("Renseignez l'objet, la section, la catégorie et la justification.", "err"); return; }
+      if (!r.items.every(function (it) { return it.desc && num(it.qty) > 0; })) { E.toast("Chaque ligne doit avoir une désignation et une quantité.", "err"); return; }
+      if (r.urgent && !r.urgRef) { E.toast("Achat d'urgence : indiquez la référence du mémo ou de la déclaration d'urgence (§13.2).", "err"); return; }
+      if (!r.no) r.no = E.nextNo("DA", "no", E.fy(r.createdAt));
+      r.submittedAt = r.submittedAt || E.nowIso();
+      E.advance(r, "AVIS_CHEF", r.ppm === "non" ? "Soumise — besoin NON inscrit au PPM (révision requise)" : "Soumise au chef de service");
+      E.toast("Demande " + r.no + " soumise.", "ok"); go("dossier", r.id);
+    } else { E.put("req", r); E.toast("Brouillon enregistré.", "ok"); go("dossier", r.id); }
+  };
+  f.onsubmit = function (ev) { ev.preventDefault(); saveNew(true); };
+  $("#saveDraft").onclick = function () { if (!f.title.value.trim()) { E.toast("Indiquez au moins l'objet de la demande.", "err"); return; } saveNew(false); };
+}
+function addFiles(fileList, arr, cb) {
+  Array.prototype.forEach.call(fileList, function (file) {
+    E.toast("Envoi de « " + file.name + " »…");
+    E.Files.add(file).then(function (meta) { arr.push(meta); cb(); E.toast(meta.sent ? "Pièce enregistrée : " + meta.name : "Pièce gardée sur ce poste, envoi dès le retour en ligne : " + meta.name, meta.sent ? "ok" : "warn"); })
+      .catch(function (e) { E.toast(e.message, "err"); });
+  });
+}
+
+/* ================= Dossier ================= */
+function vDossier(el) {
+  var r = E.get("req", PARAM);
+  if (!r) { el.innerHTML = empty("Dossier introuvable", "Il a peut-être été créé sur un autre poste : attendez la synchronisation."); return; }
+  var a = E.actionable(r), P = r.pass || {}, F = r.fin || {}, sup = E.get("sup", P.supplier) || {}, bud = E.get("bud", F.budId) || {};
+  var h = '<div class="dh"><div><span class="mono no">' + esc(r.no || "Brouillon") + "</span> " + stChip(r.status) + (r.urgent ? ' <span class="chip urg">Urgent</span>' : "") +
+    "<h2>" + esc(r.title) + "</h2><p>" + esc(r.section) + " · " + esc(r.category) + " · " + E.NATURES[r.nature] + " · demandé par " + esc((r.createdBy || {}).name) + " le " + fmtD(r.createdAt) + "</p></div>" +
+    '<div class="amt"><small>' + (P.ht ? "Montant TTC retenu" : "Estimation") + "</small><b>" + fmtN(E.amountOf(r)) + "</b><small>FCFA</small></div></div>";
+  h += '<div class="dgrid"><div class="dmain">';
+  // zone d'action
+  if (a.ok) h += '<section class="card act"><h3>Action requise — ' + esc(E.STAGE[r.status].lbl) + '</h3><div id="actZone"></div></section>';
+  else if (a.why) h += '<div class="note warn"><b>Action non autorisée pour vous</b>' + esc(a.why) + "</div>";
+  // alertes du dossier
+  var sa = E.splitAlert(r); if (sa && r.status !== "CLOTURE") h += '<div class="note warn"><b>Fractionnement ?</b>' + esc(sa) + "</div>";
+  if (r.ppm === "non") h += '<div class="note warn"><b>Hors PPM</b>Besoin non inscrit au Plan de Passation des Marchés : révision du PPM à soumettre (Chapitre 5).</div>';
+  // détails
+  h += '<section class="card"><h3>1 · Demande (FDA)</h3><dl class="kv"><dt>PPM</dt><dd>' + (r.ppm === "oui" ? "Inscrit" + (r.ppmRef ? " — " + esc(r.ppmRef) : "") : "<b class='bad'>Non inscrit</b>") + "</dd>" +
+    (r.needBy ? "<dt>Livraison souhaitée</dt><dd>" + fmtD(r.needBy) + "</dd>" : "") + (r.urgent ? "<dt>Urgence</dt><dd>Réf. " + esc(r.urgRef) + "</dd>" : "") +
+    (E.isHealth(r) ? "<dt>Circuit produits de santé</dt><dd>" + (r.circuit === "B" ? "Version B — passation directe CPM" : "Version A — via la CPA") + "</dd>" : "") +
+    "<dt>Justification</dt><dd>" + esc(r.just) + "</dd></dl>" + itemsTable(r) + filesHtml(r.files) + "</section>";
+  if (P.pack) {
+    var pk = E.PACK[P.pack] || {};
+    h += '<section class="card"><h3>2 · Passation</h3><dl class="kv"><dt>Méthode</dt><dd><b>' + esc(pk.name) + "</b><br><small>" + esc(pk.legal) + "</small></dd><dt>Attributaire</dt><dd>" + esc(sup.name || "—") + (sup.code ? " (" + esc(sup.code) + ")" : "") + "</dd>" +
+      "<dt>Montant</dt><dd>HT " + fmtN(P.ht) + (num(P.transport) ? " + transport " + fmtN(P.transport) : "") + " · TVA " + (P.exo ? "exonérée" : num(P.tva) + " %") + " · <b>TTC " + fmtM(E.ttcOf(r)) + "</b></dd>" +
+      (P.tender ? "<dt>Appel d'offres</dt><dd>DAO " + esc(P.tender.dao) + " · publié le " + fmtD(P.tender.pub) + " · ouverture le " + fmtD(P.tender.open) + " · PV CPM " + esc(P.tender.pv) + (P.tender.recours ? " · délai de recours observé" : "") + "</dd>" : "") +
+      (P.derog ? "<dt>Gré à gré</dt><dd>" + esc(P.derog.just) + " — autorisation " + esc(P.derog.auth) + "</dd>" : "") + (P.cpa ? "<dt>Coordination CPA</dt><dd>Formulaire Annexe N : " + esc(P.cpa) + "</dd>" : "") +
+      (P.pv ? "<dt>PV d'analyse comparative</dt><dd>" + esc(P.pv) + "</dd>" : "") + (P.notes ? "<dt>Observations</dt><dd>" + esc(P.notes) + "</dd>" : "") + "</dl>" + quotesTable(r) + "</section>";
+  }
+  if (F.brc) h += '<section class="card"><h3>3 · Certification budgétaire</h3><dl class="kv"><dt>BRC</dt><dd class="mono">' + esc(F.brc) + "</dd><dt>Ligne</dt><dd>" + esc(bud.code) + " — " + esc(bud.line) + "</dd><dt>Montant réservé</dt><dd>" + fmtM(F.amount) + "</dd><dt>Certifié par</dt><dd>" + esc(F.by.name) + " le " + fmtD(F.at) + "</dd></dl></section>";
+  if (r.instr && r.instr.no) h += '<section class="card"><div class="ch"><h3>4 · ' + esc(E.INSTR[r.instr.type]) + " " + esc(r.instr.no) + '</h3><button class="btn ghost sm" id="bPrintI">Imprimer</button></div><dl class="kv"><dt>Établi le</dt><dd>' + fmtD(r.instr.at) + "</dd><dt>Signature</dt><dd>" + (r.instr.signedAt ? "Signé le " + fmtD(r.instr.signedAt) + " · notifié le " + fmtD(r.instr.notifiedAt) : "En attente de signature physique") + "</dd></dl></section>";
+  if (r.recv && r.recv.no) h += '<section class="card"><div class="ch"><h3>5 · Réception — ' + esc(r.recv.no) + '</h3><button class="btn ghost sm" id="bPrintR">Imprimer le PVIR</button></div>' + recvTable(r) + "</section>";
+  if (r.inv && r.inv.no) h += '<section class="card"><h3>6 · Facture et rapprochement</h3><dl class="kv"><dt>Facture</dt><dd>' + esc(r.inv.no) + " du " + fmtD(r.inv.date) + " — " + fmtM(r.inv.amount) + "</dd><dt>Rapprochement à trois</dt><dd>" + (r.inv.ok ? "Conforme (bon de commande / PVIR / facture)" : "—") + "</dd></dl></section>";
+  if (r.pay && r.pay.paidAt) h += '<section class="card"><h3>7 · Paiement</h3><dl class="kv"><dt>Mandat</dt><dd class="mono">' + esc(r.pay.mandat) + "</dd><dt>Payé le</dt><dd>" + fmtD(r.pay.paidAt) + " — " + esc(r.pay.mode) + " " + esc(r.pay.ref || "") + "</dd>" + (r.pay.cf ? "<dt>Visa Contrôle Financier</dt><dd>" + esc(r.pay.cf) + "</dd>" : "") + "<dt>Montant</dt><dd>" + fmtM(r.pay.amount) + "</dd></dl></section>";
+  h += '<div class="bar"><button class="btn ghost sm" id="bPrintF">Imprimer la FDA</button>' + ((r.status === "BROUILLON" && r.createdBy && r.createdBy.u === E.ME.u) ? '<button class="btn ghost sm" id="bEdit">Modifier le brouillon</button>' : "") + "</div>";
+  h += '</div><aside class="dside"><h3>Fiche de circulation</h3>' + slip(r) + '<h3 class="mt">Historique</h3><ol class="hist">' + (r.history || []).slice().reverse().map(function (x) {
+    return "<li><b>" + esc((E.STAGE[x.st] || { lbl: x.st }).lbl) + "</b><small>" + fmtDT(x.at) + " · " + esc(x.by) + (x.prof ? " (" + esc(x.prof) + ")" : "") + "</small>" + (x.note ? "<p>" + esc(x.note) + "</p>" : "") + "</li>"; }).join("") + "</ol></aside></div>";
+  el.innerHTML = h;
+  $$("[data-file]", el).forEach(function (b) { b.onclick = function () { E.Files.open(JSON.parse(b.dataset.file)); }; });
+  if ($("#bPrintI")) $("#bPrintI").onclick = function () { printInstrument(r); };
+  if ($("#bPrintR")) $("#bPrintR").onclick = function () { printPVIR(r); };
+  $("#bPrintF").onclick = function () { printFDA(r); };
+  if ($("#bEdit")) $("#bEdit").onclick = function () { go("edit", r.id); };
+  if (a.ok) ACTIONS[r.status](r, $("#actZone"), a);
+}
+function itemsTable(r) {
+  return '<div class="tw"><table class="tb"><thead><tr><th>Désignation</th><th class="num">Qté</th><th>Unité</th><th class="num">P.U. estimé</th><th class="num">Total</th></tr></thead><tbody>' +
+    (r.items || []).map(function (i) { return "<tr><td>" + esc(i.desc) + '</td><td class="num">' + fmtN(i.qty) + "</td><td>" + esc(i.unit) + '</td><td class="num">' + fmtN(i.pu) + '</td><td class="num">' + fmtN(num(i.qty) * num(i.pu)) + "</td></tr>"; }).join("") +
+    '<tr class="sum"><td colspan="4">Estimation totale</td><td class="num">' + fmtN(E.reqEstimate(r)) + "</td></tr></tbody></table></div>";
+}
+function quotesTable(r) {
+  var Q = (r.pass || {}).quotes || []; if (!Q.length) return "";
+  return '<h4>Devis / offres reçus</h4><div class="tw"><table class="tb"><thead><tr><th>Fournisseur</th><th class="num">Montant HT</th><th>Délai</th><th>Conforme</th><th>Pièce</th></tr></thead><tbody>' +
+    Q.map(function (q) { var s = E.get("sup", q.supplier) || {}; return "<tr" + (q.supplier === r.pass.supplier ? ' class="win"' : "") + "><td>" + esc(s.name || "—") + (q.supplier === r.pass.supplier ? " <em>retenu</em>" : "") + '</td><td class="num">' + fmtN(q.amount) + "</td><td>" + esc(q.delay || "") + "</td><td>" + (q.ok ? "Oui" : "Non") + "</td><td>" + (q.file ? '<button class="lnk" data-file="' + esc(JSON.stringify(q.file)) + '">' + esc(q.file.name) + "</button>" : "—") + "</td></tr>"; }).join("") + "</tbody></table></div>";
+}
+function recvTable(r) {
+  var R = r.recv; return '<dl class="kv"><dt>Prononcée par</dt><dd>' + esc(R.by.name) + " le " + fmtD(R.at) + (R.members ? " · commission : " + esc(R.members) : "") + "</dd><dt>Conformité</dt><dd>" + (R.ok ? "Conforme" : "<b class='bad'>Réserves</b> — " + esc(R.reserve || "")) + "</dd></dl>" +
+    '<div class="tw"><table class="tb"><thead><tr><th>Désignation</th><th class="num">Commandé</th><th class="num">Reçu (cumul)</th></tr></thead><tbody>' +
+    (r.items || []).map(function (i, k) { return "<tr><td>" + esc(i.desc) + '</td><td class="num">' + fmtN(i.qty) + '</td><td class="num">' + fmtN((R.qty || [])[k] || 0) + "</td></tr>"; }).join("") + "</tbody></table></div>";
+}
+function filesHtml(files) { if (!files || !files.length) return ""; return '<div class="files">' + files.map(function (f) { return '<button class="file lnk" data-file="' + esc(JSON.stringify(f)) + '">📎 ' + esc(f.name) + (f.sent ? "" : " <small>(en attente d'envoi)</small>") + "</button>"; }).join("") + "</div>"; }
+
+/* Fiche de circulation : un visa (tampon) par étape franchie */
+function slip(r) {
+  var done = {}; (r.history || []).forEach(function (x) { if (x.from) done[x.from] = x; });
+  var cur = r.status;
+  return '<ol class="slip">' + E.STAGES.slice(1).map(function (s) {
+    if (s.k === "CLOTURE") return cur === "CLOTURE" ? '<li class="end"><b>Clôturé</b><span class="stamp green">CLÔTURÉ · ' + fmtD(r.stageAt) + "</span></li>" : '<li><b>Clôturé</b></li>';
+    var v = done[s.k], isCur = cur === s.k, rej = cur === "REJETE" && (r.history || []).slice(-1)[0].from === s.k;
+    var cls = rej ? "rej" : v ? "done" : isCur ? "cur" : "";
+    var stamp = v ? '<span class="stamp">VU · ' + fmtD(v.at) + "<i>" + esc(v.by) + "</i></span>" : rej ? '<span class="stamp red">REJETÉ</span>' : isCur ? '<span class="wait">En cours · ' + E.daysSince(r.stageAt) + " j</span>" : "";
+    return '<li class="' + cls + '"><b>' + esc(s.lbl) + "</b>" + stamp + "</li>"; }).join("") + "</ol>";
+}
+
+/* ================= Actions par étape ================= */
+function decisionBox(id, okLbl, extra) {
+  return (extra || "") + '<label>Observation / motif<textarea id="' + id + 'Note" rows="2" placeholder="Obligatoire en cas de retour ou de rejet"></textarea></label>' +
+    '<div class="bar end"><button class="btn danger ghost" data-d="rej">Rejeter</button><button class="btn ghost" data-d="ret">Retourner pour correction</button><button class="btn" data-d="ok">' + esc(okLbl) + "</button></div>";
+}
+function wireDecision(z, r, onOk, retTo) {
+  $$("[data-d]", z).forEach(function (b) { b.onclick = function () {
+    var note = ($("textarea[id$=Note]", z) || {}).value || "";
+    if (b.dataset.d === "ok") return onOk(note);
+    if (!note.trim()) { E.toast("Indiquez le motif.", "err"); return; }
+    if (b.dataset.d === "rej") { if (!confirm("Rejeter définitivement le dossier " + r.no + " ?")) return; releaseBudget(r); E.advance(r, "REJETE", "Rejet : " + note); E.toast("Dossier rejeté.", "ok"); }
+    else { if (["BROUILLON", "AVIS_CHEF", "PASSATION"].indexOf(retTo || "BROUILLON") >= 0 && r.fin && r.fin.brc) { releaseBudget(r); r.fin.brcAnnule = r.fin.brc; r.fin.brc = ""; }
+      E.advance(r, retTo || "BROUILLON", "Retour pour correction : " + note + (r.fin && r.fin.brcAnnule ? " (BRC " + r.fin.brcAnnule + " annulé, crédits libérés)" : "")); E.toast("Dossier retourné.", "ok"); }
+    route(); }; });
+}
+function releaseBudget(r) { if (r.fin && r.fin.brc && !(r.pay && r.pay.paidAt)) { r.fin.released = E.nowIso(); r.fin.amount = 0; } }
+
+var ACTIONS = {
+  BROUILLON: function (r, z) {
+    var back = (r.history || []).slice(-1)[0] || {};
+    z.innerHTML = (back.from && back.from !== "BROUILLON" ? '<div class="note warn"><b>Dossier retourné pour correction</b>' + esc(back.note || "") + "</div>" : '<p class="small">Ce dossier est un brouillon : il n\'est visible que par vous.</p>') +
+      '<div class="bar end"><button class="btn ghost" id="dEdit">Modifier</button><button class="btn" id="dSub">Soumettre au chef de service</button></div>';
+    $("#dEdit").onclick = function () { go("edit", r.id); };
+    $("#dSub").onclick = function () {
+      if (!r.title || !r.section || !r.category || !r.just || !(r.items || []).every(function (it) { return it.desc && num(it.qty) > 0; })) { E.toast("Complétez la demande (objet, section, catégorie, justification, articles) avant de la soumettre.", "err"); go("edit", r.id); return; }
+      if (r.urgent && !r.urgRef) { E.toast("Achat d'urgence : référence du mémo d'urgence requise.", "err"); go("edit", r.id); return; }
+      if (!r.no) r.no = E.nextNo("DA", "no", E.fy(r.createdAt));
+      r.submittedAt = r.submittedAt || E.nowIso();
+      E.advance(r, "AVIS_CHEF", back.from && back.from !== "BROUILLON" ? "Resoumise après correction" : "Soumise au chef de service");
+      E.toast("Demande " + r.no + " soumise.", "ok"); route();
+    };
+  },
+  AVIS_CHEF: function (r, z) {
+    z.innerHTML = '<p class="small">Vérifiez la réalité du besoin, sa conformité au PPM et les spécifications avant transmission au Service de Passation des Marchés.</p>' + decisionBox("ac", "Avis favorable — transmettre à la passation");
+    wireDecision(z, r, function (note) { E.advance(r, "PASSATION", "Avis favorable du chef de service" + (note ? " : " + note : "")); E.toast("Transmis au Service de Passation des Marchés.", "ok"); route(); }, "BROUILLON");
+  },
+  PASSATION: function (r, z) {
+    var P = JSON.parse(JSON.stringify(r.pass || {})); P.quotes = P.quotes || []; P.tva = P.tva == null ? 18 : P.tva; P.exo = !!P.exo;
+    var est = E.reqEstimate(r); P.pack = P.pack || E.suggestPack(r.nature, est, r);
+    var sups = E.activeSuppliers();
+    var opt = function (sel) { return '<option value="">— Fournisseur actif —</option>' + sups.map(function (s) { return '<option value="' + s.id + '"' + (sel === s.id ? " selected" : "") + ">" + esc(s.name) + " (" + esc(s.code) + ")" + (s.prequal ? "" : " · non préqualifié") + "</option>"; }).join(""); };
+    var draw = function () {
+      var pk = E.PACK[P.pack], ttc = E.ttcOf({ pass: P });
+      var need = E.minQuotes(r, P.pack, ttc || est), chk = E.methodCheck(P.pack, r.nature, ttc || est);
+      z.innerHTML = '<div class="g2"><label>Méthode de passation *<select id="pPack">' + E.PACKS.map(function (p) { return '<option value="' + p.id + '"' + (P.pack === p.id ? " selected" : "") + ">" + esc(p.name) + "</option>"; }).join("") + "</select><small>Suggestion selon l'estimation (" + fmtM(est) + ") : <b>" + esc(E.PACK[E.suggestPack(r.nature, est, r)].short) + "</b></small></label>" +
+        '<div class="note small"><b>' + esc(pk.short) + "</b>" + esc(pk.legal) + "<br>Approbateurs : " + esc(pk.approvers) + " · délai indicatif : " + esc(pk.delay) + (need ? "<br>Devis/offres requis : <b>" + need + "</b>" + (r.urgent ? " (urgence §13.2)" : "") : "") + "</div></div>" +
+        (chk ? '<div class="note bad"><b>Méthode incompatible avec le montant</b>' + esc(chk) + "</div>" : "") +
+        (pk.tender ? '<fieldset><legend>Appel d\'offres (Chapitre 7)</legend><div class="g4"><label>N° DAO *<input id="tDao" value="' + esc((P.tender || {}).dao || "") + '"></label><label>Publication *<input type="date" id="tPub" value="' + esc((P.tender || {}).pub || "") + '"></label><label>Ouverture des plis *<input type="date" id="tOpen" value="' + esc((P.tender || {}).open || "") + '"></label><label>PV d\'attribution CPM *<input id="tPv" value="' + esc((P.tender || {}).pv || "") + '"></label></div><label class="chk"><input type="checkbox" id="tRec"' + ((P.tender || {}).recours ? " checked" : "") + "> Résultats publiés et délai de recours observé (Chapitre 8)</label></fieldset>" : "") +
+        (pk.derog ? '<fieldset><legend>Gré à gré — cas limitatifs (Art. 101)</legend><label>Justification *<textarea id="gJust" rows="2">' + esc((P.derog || {}).just || "") + '</textarea></label><label>Réf. autorisation préalable du Ministre *<input id="gAuth" value="' + esc((P.derog || {}).auth || "") + '"></label></fieldset>' : "") +
+        (pk.cpa ? '<fieldset><legend>Coordination CPA (Chapitre 3, Version A)</legend><label>Réf. Formulaire de Coordination CPA (Annexe N) *<input id="cRef" value="' + esc(P.cpa || "") + '"></label><p class="small">Joignez le formulaire signé et la proforma CPA ci-dessous.</p></fieldset>' : "") +
+        '<h4>Devis / offres</h4><div class="tw"><table class="tb items"><thead><tr><th>Fournisseur</th><th class="num">Montant HT</th><th>Délai</th><th>Conforme</th><th>Pièce</th><th>Retenir</th><th></th></tr></thead><tbody>' +
+        P.quotes.map(function (q, i) { return '<tr><td><select data-q="' + i + '" data-k="supplier">' + opt(q.supplier) + '</select></td><td><input class="num" type="number" min="0" data-q="' + i + '" data-k="amount" value="' + esc(q.amount || "") + '"></td><td><input data-q="' + i + '" data-k="delay" value="' + esc(q.delay || "") + '" placeholder="Ex. 15 jours"></td>' +
+          '<td><input type="checkbox" data-q="' + i + '" data-k="ok"' + (q.ok ? " checked" : "") + '></td><td>' + (q.file ? '<span class="file">' + esc(q.file.name) + "</span>" : '<label class="btn ghost sm up">Joindre<input type="file" data-qf="' + i + '" hidden></label>') + '</td><td><input type="radio" name="win" data-win="' + i + '"' + (P.supplier && q.supplier === P.supplier ? " checked" : "") + '></td><td><button type="button" class="x" data-qd="' + i + '">×</button></td></tr>'; }).join("") +
+        '</tbody></table></div><div class="bar"><button type="button" class="btn ghost sm" id="addQ">+ Ajouter un devis</button><span class="spacer"></span><small>' + (sups.length ? "" : "Aucun fournisseur actif : ajoutez-en dans le répertoire. ") + '</small></div>' +
+        '<div class="g4"><label>Montant HT retenu *<input type="number" min="0" id="pHt" value="' + esc(P.ht || "") + '"></label><label>Transport / livraison<input type="number" min="0" id="pTr" value="' + esc(P.transport || "") + '"></label><label>TVA %<input type="number" min="0" max="100" step="0.01" id="pTva" value="' + esc(P.tva) + '"' + (P.exo ? " disabled" : "") + '></label><label class="chk"><input type="checkbox" id="pExo"' + (P.exo ? " checked" : "") + "> Exonération de TVA</label></div>" +
+        '<div class="ttc">Montant TTC : <b>' + fmtM(ttc) + "</b>" + (ttc && est && Math.abs(ttc - est) / est > 0.15 ? ' <span class="chip warnc">Écart de ' + Math.round((ttc - est) / est * 100) + " % avec l'estimation</span>" : "") + "</div>" +
+        (pk.minQ >= 3 ? '<label>Réf. PV d\'analyse comparative des devis *<input id="pPv" value="' + esc(P.pv || "") + '"></label>' : "") +
+        '<label>Observations du SPM<textarea id="pNotes" rows="2">' + esc(P.notes || "") + "</textarea></label>" +
+        decisionBox("ps", "Valider la passation — transmettre à la Finance (BRC)");
+      bind();
+    };
+    var sync = function () {
+      P.pack = $("#pPack").value;
+      $$("[data-q]", z).forEach(function (inp) { var q = P.quotes[+inp.dataset.q]; q[inp.dataset.k] = inp.type === "checkbox" ? inp.checked : inp.value; });
+      var w = $("[data-win]:checked", z); if (w) { P.supplier = P.quotes[+w.dataset.win].supplier; }
+      P.ht = num($("#pHt").value); P.transport = num($("#pTr").value); P.tva = num($("#pTva").value); P.exo = $("#pExo").checked;
+      if ($("#tDao")) P.tender = { dao: $("#tDao").value.trim(), pub: $("#tPub").value, open: $("#tOpen").value, pv: $("#tPv").value.trim(), recours: $("#tRec").checked };
+      if ($("#gJust")) P.derog = { just: $("#gJust").value.trim(), auth: $("#gAuth").value.trim() };
+      if ($("#cRef")) P.cpa = $("#cRef").value.trim();
+      if ($("#pPv")) P.pv = $("#pPv").value.trim(); P.notes = $("#pNotes").value.trim();
+    };
+    var bind = function () {
+      $("#pPack").onchange = function () { sync(); draw(); };
+      $("#pExo").onchange = function () { sync(); draw(); };
+      ["#pHt", "#pTr", "#pTva"].forEach(function (s) { $(s).onchange = function () { sync(); draw(); }; });
+      $$("[data-k=amount]", z).forEach(function (i) { i.onchange = function () { sync(); var w = $("[data-win]:checked", z); if (w && +w.dataset.win === +i.dataset.q) { P.ht = num(i.value); } draw(); }; });
+      $$("[data-win]", z).forEach(function (i) { i.onchange = function () { sync(); var q = P.quotes[+i.dataset.win]; P.supplier = q.supplier; if (num(q.amount)) P.ht = num(q.amount); draw(); }; });
+      $("#addQ").onclick = function () { sync(); P.quotes.push({ supplier: "", amount: "", delay: "", ok: true }); draw(); };
+      $$("[data-qd]", z).forEach(function (b) { b.onclick = function () { sync(); var q = P.quotes.splice(+b.dataset.qd, 1)[0]; if (q && q.supplier === P.supplier) P.supplier = ""; draw(); }; });
+      $$("[data-qf]", z).forEach(function (inp) { inp.onchange = function (ev) { sync(); var i = +inp.dataset.qf, f = ev.target.files[0]; if (!f) return;
+        E.Files.add(f).then(function (meta) { P.quotes[i].file = meta; draw(); E.toast("Devis joint.", "ok"); }).catch(function (e) { E.toast(e.message, "err"); }); }; });
+      wireDecision(z, r, function (note) {
+        sync();
+        var pk = E.PACK[P.pack], ttc = E.ttcOf({ pass: P }), need = E.minQuotes(r, P.pack, ttc);
+        var err = E.methodCheck(P.pack, r.nature, ttc);
+        var valid = P.quotes.filter(function (q) { return q.supplier && num(q.amount) > 0; });
+        var distinct = {}; valid.forEach(function (q) { distinct[q.supplier] = 1; });
+        if (!err && !(P.ht > 0)) err = "Indiquez le montant HT retenu.";
+        if (!err && !pk.cpa && !P.supplier) err = "Sélectionnez l'offre retenue (colonne « Retenir »).";
+        if (!err && Object.keys(distinct).length < need) err = need + " devis de fournisseurs distincts sont requis pour cette méthode (vous en avez " + Object.keys(distinct).length + ").";
+        if (!err && pk.tender && (!P.tender.dao || !P.tender.pub || !P.tender.open || !P.tender.pv)) err = "Renseignez le DAO, les dates de publication et d'ouverture et le PV d'attribution de la CPM.";
+        if (!err && pk.tender && (new Date(P.tender.open) - new Date(P.tender.pub)) / 86400000 < (r.urgent ? 20 : 30)) err = "Délai entre publication et ouverture des plis inférieur à " + (r.urgent ? "20 jours (urgence, Art. 123)" : "30 jours (Chapitre 7)") + ".";
+        if (!err && pk.tender && !P.tender.recours) err = "Le délai de recours doit être observé avant signature (Chapitre 8).";
+        if (!err && pk.derog && (!P.derog.just || !P.derog.auth)) err = "Gré à gré : justification et autorisation préalable du Ministre obligatoires.";
+        if (!err && pk.cpa && !P.cpa) err = "Indiquez la référence du Formulaire de Coordination CPA (Annexe N).";
+        if (!err && pk.minQ >= 3 && !P.pv) err = "Indiquez la référence du PV d'analyse comparative des devis.";
+        var hasFile = P.quotes.some(function (q) { return q.file; }) || (r.files || []).length;
+        if (!err && !hasFile) err = "Au moins une pièce (devis, proforma ou formulaire) doit être jointe avant transmission.";
+        if (err) { E.toast(err, "err"); return; }
+        P.by = { u: E.ME.u, name: E.ME.name }; P.at = E.nowIso(); r.pass = P;
+        E.advance(r, "BUDGET", "Passation : " + pk.short + " — " + ((E.get("sup", P.supplier) || {}).name || "CPA") + " — TTC " + fmtM(ttc) + (note ? " — " + note : ""));
+        E.toast("Transmis à la Finance pour certification budgétaire.", "ok"); route();
+      }, "AVIS_CHEF");
+    };
+    draw();
+  },
+  BUDGET: function (r, z) {
+    var ttc = E.ttcOf(r), buds = E.list("bud").filter(function (b) { return String(b.year) === E.fy(); });
+    var pref = { "Réactifs & consommables de laboratoire": "RX", "Médicaments & produits de santé": "RX", "Équipements de laboratoire": "EQ", "Matériel informatique & bureautique": "EQ", "Mobilier": "EQ", "Véhicules & logistique": "EQ" }[r.category];
+    var def = (buds.filter(function (b) { return pref && b.code.indexOf(pref) === 0; })[0] || buds[0] || {}).id;
+    z.innerHTML = '<p class="small">Bon de Réservation de Crédits (BRC) — certification de la disponibilité des crédits par l\'Agence Comptable (Chapitre 11, SOP 01).</p>' +
+      '<label>Ligne budgétaire *<select id="bLine">' + buds.map(function (b) { var u = E.budgetUse(b); return '<option value="' + b.id + '"' + (b.id === def ? " selected" : "") + ">" + esc(b.code) + " — " + esc(b.line) + " · disponible " + fmtN(u.avail) + "</option>"; }).join("") + "</select></label>" +
+      '<div id="bInfo"></div>' + decisionBox("bg", "Émettre le BRC — transmettre pour approbation finale");
+    var info = function () { var b = E.get("bud", $("#bLine").value); if (!b) { $("#bInfo").innerHTML = '<div class="note bad">Aucune ligne budgétaire pour ' + E.fy() + ". Créez-la dans l'onglet Budget.</div>"; return; }
+      var u = E.budgetUse(b), ok = u.avail >= ttc;
+      $("#bInfo").innerHTML = '<div class="note ' + (ok ? "ok" : "bad") + '"><b>' + (ok ? "Crédits disponibles" : "Crédits insuffisants") + "</b>Montant à réserver : " + fmtM(ttc) + " · disponible sur " + esc(b.code) + " : " + fmtM(u.avail) + (ok ? "" : " — le BRC ne peut pas être émis : retournez le dossier ou rejetez-le.") + "</div>"; };
+    if ($("#bLine")) { $("#bLine").onchange = info; info(); } else $("#bInfo").innerHTML = '<div class="note bad">Aucune ligne budgétaire.</div>';
+    wireDecision(z, r, function (note) {
+      var b = E.get("bud", ($("#bLine") || {}).value); if (!b) { E.toast("Choisissez une ligne budgétaire.", "err"); return; }
+      if (E.budgetUse(b).avail < ttc) { E.toast("Crédits insuffisants sur " + b.code + ".", "err"); return; }
+      r.fin = { budId: b.id, amount: ttc, brc: E.nextNo("BRC", "fin.brc", E.fy()), by: { u: E.ME.u, name: E.ME.name }, at: E.nowIso() };
+      E.advance(r, "APPROBATION", "BRC " + r.fin.brc + " — ligne " + b.code + " — " + fmtM(ttc) + (note ? " — " + note : ""));
+      E.toast("BRC " + r.fin.brc + " émis.", "ok"); route();
+    }, "PASSATION");
+  },
+  APPROBATION: function (r, z, a) {
+    var ttc = E.ttcOf(r);
+    z.innerHTML = '<div class="note"><b>Approbation finale</b>Montant TTC : ' + fmtM(ttc) + " · méthode : " + esc((E.PACK[r.pass.pack] || {}).short) + " · BRC " + esc(r.fin.brc) + "</div>" +
+      (a.interim ? '<div class="note warn"><b>Délégation</b>' + esc(a.why) + '<label>Réf. de la décision constatant l\'empêchement du DG *<input id="iRef"></label></div>' : "") +
+      decisionBox("ap", "Approuver — établir le " + E.INSTR[E.instrTypeFor(r)].toLowerCase());
+    wireDecision(z, r, function (note) {
+      var ref = a.interim ? ($("#iRef").value || "").trim() : "";
+      if (a.interim && !ref) { E.toast("Référence de l'empêchement du DG obligatoire (§4.6.1).", "err"); return; }
+      r.appr = { by: { u: E.ME.u, name: E.ME.name }, at: E.nowIso(), interim: ref };
+      E.advance(r, "INSTRUMENT", "Approbation finale" + (ref ? " (par délégation — empêchement du DG : " + ref + ")" : "") + (note ? " — " + note : ""));
+      E.toast("Dossier approuvé.", "ok"); route();
+    }, "PASSATION");
+  },
+  INSTRUMENT: function (r, z) {
+    var t = E.instrTypeFor(r);
+    if (!r.instr || !r.instr.no) { r.instr = { type: t, no: E.nextNo(E.INSTR_PFX[t], "instr.no", E.fy()), at: E.nowIso(), by: { u: E.ME.u, name: E.ME.name } }; E.put("req", r); }
+    z.innerHTML = '<p>' + esc(E.INSTR[r.instr.type]) + " <b class='mono'>" + esc(r.instr.no) + "</b> établi. Imprimez-le pour signature physique par le Directeur Général (ou son délégataire) et le titulaire, puis enregistrez la signature et la notification.</p>" +
+      '<div class="bar"><button class="btn ghost" id="iPrint">Imprimer le ' + esc(E.INSTR[r.instr.type].toLowerCase()) + "</button></div>" +
+      '<div class="g2"><label>Date de signature *<input type="date" id="iSig"></label><label>Date de notification au titulaire *<input type="date" id="iNot"></label></div>' +
+      '<label>Pièce signée (scan)<input type="file" id="iScan"></label>' +
+      '<div class="bar end"><button class="btn" id="iOk">Enregistrer la signature — en attente de réception</button></div>';
+    $("#iPrint").onclick = function () { printInstrument(r); };
+    var scan = null; $("#iScan").onchange = function (ev) { var f = ev.target.files[0]; if (f) E.Files.add(f).then(function (m) { scan = m; E.toast("Scan joint.", "ok"); }).catch(function (e) { E.toast(e.message, "err"); }); };
+    $("#iOk").onclick = function () {
+      var s = $("#iSig").value, n = $("#iNot").value;
+      if (!s || !n) { E.toast("Indiquez les dates de signature et de notification.", "err"); return; }
+      if (n < s) { E.toast("La notification ne peut précéder la signature.", "err"); return; }
+      r.instr.signedAt = s; r.instr.notifiedAt = n; if (scan) { r.files = (r.files || []).concat([scan]); }
+      E.advance(r, "RECEPTION", E.INSTR[r.instr.type] + " " + r.instr.no + " signé le " + fmtD(s) + ", notifié le " + fmtD(n) + ". Un marché n'est exécutoire qu'après notification (Art. 3).");
+      E.toast("Signature enregistrée — dossier en attente de réception.", "ok"); route();
+    };
+  },
+  RECEPTION: function (r, z) {
+    var R = r.recv || { qty: [] };
+    z.innerHTML = '<p class="small">SOP 05 — Inspection et réception. Saisissez les quantités effectivement reçues lors de cette livraison et la conformité constatée.</p>' +
+      '<div class="tw"><table class="tb"><thead><tr><th>Désignation</th><th class="num">Commandé</th><th class="num">Déjà reçu</th><th class="num">Reçu ce jour</th></tr></thead><tbody>' +
+      (r.items || []).map(function (i, k) { var got = num((R.qty || [])[k]); return "<tr><td>" + esc(i.desc) + '</td><td class="num">' + fmtN(i.qty) + '</td><td class="num">' + fmtN(got) + '</td><td><input class="num" type="number" min="0" step="any" data-rq="' + k + '" value="' + Math.max(0, num(i.qty) - got) + '"></td></tr>'; }).join("") + "</tbody></table></div>" +
+      '<div class="g2"><label>Membres de la commission de réception<input id="rMem" placeholder="Noms et fonctions" value="' + esc(R.members || "") + '"></label><label>N° bon de livraison du fournisseur<input id="rBl" value="' + esc(R.bl || "") + '"></label></div>' +
+      '<label class="chk"><input type="checkbox" id="rOk" checked> Biens / services conformes aux spécifications (lots, dates de péremption, certificats d\'analyse vérifiés pour les produits de santé)</label>' +
+      '<label>Réserves / observations<textarea id="rRes" rows="2"></textarea></label><label>PV signé (scan)<input type="file" id="rScan"></label>' +
+      '<div class="bar end"><button class="btn" id="rGo">Enregistrer le PV de réception</button></div>';
+    var scan = null; $("#rScan").onchange = function (ev) { var f = ev.target.files[0]; if (f) E.Files.add(f).then(function (m) { scan = m; E.toast("Scan joint.", "ok"); }).catch(function (e) { E.toast(e.message, "err"); }); };
+    $("#rGo").onclick = function () {
+      var add = $$("[data-rq]", z).map(function (i) { return num(i.value); });
+      if (!add.some(function (x) { return x > 0; })) { E.toast("Aucune quantité reçue saisie.", "err"); return; }
+      var ok = $("#rOk").checked, res = $("#rRes").value.trim();
+      if (!ok && !res) { E.toast("Décrivez les réserves en cas de non-conformité.", "err"); return; }
+      var qty = (r.items || []).map(function (i, k) { return Math.min(num(i.qty), num((R.qty || [])[k]) + add[k]); });
+      var complete = (r.items || []).every(function (i, k) { return qty[k] >= num(i.qty); });
+      r.recv = { no: R.no || E.nextNo("PVIR", "recv.no", E.fy()), qty: qty, ok: ok, reserve: res, members: $("#rMem").value.trim(), bl: $("#rBl").value.trim(), at: E.nowIso(), by: { u: E.ME.u, name: E.ME.name }, complete: complete };
+      if (scan) r.files = (r.files || []).concat([scan]);
+      if (complete && ok) { E.advance(r, "RAPPROCHEMENT", "PVIR " + r.recv.no + " — réception complète et conforme"); E.toast("Réception complète : dossier transmis pour rapprochement de la facture.", "ok"); }
+      else { r.history.push({ at: E.nowIso(), st: "RECEPTION", by: E.ME.name, u: E.ME.u, prof: "Réception", note: "PVIR " + r.recv.no + " — " + (complete ? "" : "réception partielle") + (ok ? "" : " réserves : " + res) }); E.put("req", r); E.toast("Réception " + (ok ? "partielle" : "avec réserves") + " enregistrée : le dossier reste en réception.", "warn"); }
+      route();
+    };
+  },
+  RAPPROCHEMENT: function (r, z) {
+    var ttc = E.ttcOf(r);
+    z.innerHTML = '<p class="small">SOP 06 — rapprochement à trois : bon de commande / marché, PV de réception, facture.</p>' +
+      '<div class="g3"><label>N° de facture *<input id="fNo"></label><label>Date de facture *<input type="date" id="fDate"></label><label>Montant facturé TTC *<input type="number" min="0" id="fAmt" value="' + ttc + '"></label></div>' +
+      '<label>Facture (scan)<input type="file" id="fScan"></label><div id="fChk"></div>' + decisionBox("rp", "Rapprochement conforme — transmettre à l'Agence Comptable");
+    var scan = null; $("#fScan").onchange = function (ev) { var f = ev.target.files[0]; if (f) E.Files.add(f).then(function (m) { scan = m; E.toast("Facture jointe.", "ok"); }).catch(function (e) { E.toast(e.message, "err"); }); };
+    var chk = function () { var a = num($("#fAmt").value);
+      $("#fChk").innerHTML = '<div class="note ' + (a <= ttc ? "ok" : "bad") + '"><b>' + (a <= ttc ? "Concordance" : "Écart") + "</b>" + E.INSTR[r.instr.type] + " " + esc(r.instr.no) + " : " + fmtM(ttc) + " · PVIR " + esc(r.recv.no) + " : réception complète · facture : " + fmtM(a) + "</div>"; };
+    $("#fAmt").oninput = chk; chk();
+    wireDecision(z, r, function (note) {
+      var no = $("#fNo").value.trim(), d = $("#fDate").value, a = num($("#fAmt").value);
+      if (!no || !d || !a) { E.toast("Renseignez le n°, la date et le montant de la facture.", "err"); return; }
+      if (a > ttc) { E.toast("Le montant facturé dépasse le montant du " + E.INSTR[r.instr.type].toLowerCase() + " : rapprochement impossible.", "err"); return; }
+      r.inv = { no: no, date: d, amount: a, ok: true, by: { u: E.ME.u, name: E.ME.name }, at: E.nowIso() }; if (scan) r.files = (r.files || []).concat([scan]);
+      E.advance(r, "PAIEMENT", "Facture " + no + " — rapprochement à trois conforme" + (note ? " — " + note : ""));
+      E.toast("Transmis à l'Agence Comptable.", "ok"); route();
+    }, "RECEPTION");
+  },
+  PAIEMENT: function (r, z) {
+    var a = r.inv.amount, cf = a > 30 * E.M, late = E.daysSince(r.inv.date) > 45;
+    z.innerHTML = (late ? '<div class="note bad"><b>Délai de règlement dépassé</b>Plus de 45 jours depuis la facture (Art. 184 CMP) : des intérêts moratoires peuvent être dus.</div>' : "") +
+      '<p class="small">Liquidation (service fait certifié par le PVIR ' + esc(r.recv.no) + "), ordonnancement et règlement.</p>" +
+      '<div class="g3"><label>Date de paiement *<input type="date" id="pDate"></label><label>Mode *<select id="pMode"><option>Virement bancaire</option><option>Chèque</option><option>Caisse</option></select></label><label>Réf. de l\'opération<input id="pRef"></label></div>' +
+      (cf ? '<label>Visa du Contrôle Financier (marché > 30 M FCFA) *<input id="pCf"></label>' : "") +
+      decisionBox("py", "Enregistrer le paiement et clôturer");
+    wireDecision(z, r, function (note) {
+      var d = $("#pDate").value; if (!d) { E.toast("Indiquez la date de paiement.", "err"); return; }
+      var cfv = cf ? ($("#pCf").value || "").trim() : ""; if (cf && !cfv) { E.toast("Visa du Contrôle Financier obligatoire au-delà de 30 000 000 FCFA (SOP 06).", "err"); return; }
+      r.pay = { mandat: E.nextNo("MAN", "pay.mandat", E.fy()), paidAt: d, mode: $("#pMode").value, ref: $("#pRef").value.trim(), cf: cfv, amount: a, by: { u: E.ME.u, name: E.ME.name }, at: E.nowIso() };
+      E.advance(r, "CLOTURE", "Mandat " + r.pay.mandat + " — payé le " + fmtD(d) + " (" + r.pay.mode + ")" + (note ? " — " + note : ""));
+      E.toast("Paiement enregistré, dossier clôturé.", "ok"); route();
+    }, "RAPPROCHEMENT");
+  }
+};
+
+/* ================= Fournisseurs ================= */
+function vSuppliers(el) {
+  var edit = E.can("passation") && E.PROFILE === "passation";
+  var rows = E.list("sup").sort(function (a, b) { return a.code.localeCompare(b.code); });
+  el.innerHTML = '<div class="bar"><input id="sq" placeholder="Rechercher un fournisseur…"><span class="spacer"></span>' + (edit ? '<button class="btn" id="sAdd">+ Nouveau fournisseur</button>' : "") + '<button class="btn ghost" id="sCsv">Exporter CSV</button></div>' +
+    (edit ? "" : '<p class="small">Consultation seule. La tenue du répertoire relève du Service de Passation des Marchés (SOP 02, Annexe S).</p>') + '<section class="card" id="sT"></section><div id="sForm"></div>';
+  var draw = function () { var q = $("#sq").value.toLowerCase();
+    var R = rows.filter(function (s) { return !q || [s.code, s.name, s.cat, s.nif, s.city].join(" ").toLowerCase().indexOf(q) >= 0; });
+    $("#sT").innerHTML = '<div class="tw"><table class="tb"><thead><tr><th>Code</th><th>Raison sociale</th><th>Catégorie</th><th>Statut</th><th>Préqualifié</th><th>Performance</th><th>Contact</th></tr></thead><tbody>' +
+      R.map(function (s) { return '<tr data-sup="' + s.id + '"><td class="mono">' + esc(s.code) + "</td><td><b>" + esc(s.name) + "</b><small>" + esc(s.nif ? "NIF " + s.nif : "") + "</small></td><td>" + esc(s.cat) + '</td><td><span class="chip sup-' + esc(s.status) + '">' + esc(s.status) + "</span></td><td>" + (s.prequal ? "Oui" : "Non") + "</td><td>" + "★".repeat(num(s.rating)) + "☆".repeat(5 - num(s.rating)) + "</td><td><small>" + esc(s.phone || "") + " " + esc(s.email || "") + "</small></td></tr>"; }).join("") + "</tbody></table></div>";
+    if (edit) $$("[data-sup]").forEach(function (tr) { tr.onclick = function () { form(E.get("sup", tr.dataset.sup)); }; });
+  };
+  var form = function (s) {
+    var n = !s; s = s || { status: "EN_ATTENTE", rating: 3, prequal: false };
+    $("#sForm").innerHTML = '<form class="card form" id="sf"><h3>' + (n ? "Nouveau fournisseur" : "Fiche " + esc(s.code)) + '</h3><div class="g2"><label>Raison sociale *<input name="name" required value="' + esc(s.name || "") + '"></label><label>Catégorie *<select name="cat">' + E.CATEGORIES.map(function (c) { return "<option" + (s.cat === c ? " selected" : "") + ">" + esc(c) + "</option>"; }).join("") + "</select></label></div>" +
+      '<div class="g4"><label>NIF<input name="nif" value="' + esc(s.nif || "") + '"></label><label>RCCM<input name="rccm" value="' + esc(s.rccm || "") + '"></label><label>Ville<input name="city" value="' + esc(s.city || "") + '"></label><label>Téléphone<input name="phone" value="' + esc(s.phone || "") + '"></label></div>' +
+      '<div class="g4"><label>E-mail<input name="email" type="email" value="' + esc(s.email || "") + '"></label><label>Statut<select name="status">' + ["ACTIF", "EN_ATTENTE", "SUSPENDU", "EXCLU"].map(function (x) { return "<option" + (s.status === x ? " selected" : "") + ">" + x + "</option>"; }).join("") + '</select></label><label>Note de performance (Ch. 10)<select name="rating">' + [1, 2, 3, 4, 5].map(function (x) { return "<option" + (num(s.rating) === x ? " selected" : "") + ">" + x + "</option>"; }).join("") + '</select></label><label class="chk"><input type="checkbox" name="prequal"' + (s.prequal ? " checked" : "") + "> Préqualifié (SOP 02)</label></div>" +
+      '<label>Observations<textarea name="notes" rows="2">' + esc(s.notes || "") + '</textarea></label><div class="bar end"><button type="button" class="btn ghost" id="sCancel">Annuler</button><button class="btn">Enregistrer</button></div></form>';
+    var f = $("#sf"); f.scrollIntoView({ behavior: "smooth" });
+    $("#sCancel").onclick = function () { $("#sForm").innerHTML = ""; };
+    f.onsubmit = function (ev) { ev.preventDefault();
+      ["name", "cat", "nif", "rccm", "city", "phone", "email", "status", "notes"].forEach(function (k) { s[k] = f[k].value.trim(); });
+      s.rating = num(f.rating.value); s.prequal = f.prequal.checked;
+      if (n) { s.id = E.uid("S"); var mx = 0; E.list("sup").forEach(function (o) { var m = /FRS-(\d+)/.exec(o.code || ""); if (m) mx = Math.max(mx, +m[1]); }); s.code = "FRS-" + ("000" + (mx + 1)).slice(-4); }
+      s.hist = (s.hist || []).concat([{ at: E.nowIso(), by: E.ME.name, note: n ? "Création" : "Mise à jour (statut " + s.status + ")" }]);
+      E.put("sup", s); E.toast("Fournisseur " + s.code + " enregistré.", "ok"); $("#sForm").innerHTML = ""; rows = E.list("sup").sort(function (a, b) { return a.code.localeCompare(b.code); }); draw(); };
+  };
+  draw(); $("#sq").oninput = draw;
+  if ($("#sAdd")) $("#sAdd").onclick = function () { form(null); };
+  $("#sCsv").onclick = function () { csv("fournisseurs", ["Code", "Raison sociale", "Catégorie", "NIF", "RCCM", "Ville", "Téléphone", "E-mail", "Statut", "Préqualifié", "Performance", "Observations"], rows.map(function (s) { return [s.code, s.name, s.cat, s.nif, s.rccm, s.city, s.phone, s.email, s.status, s.prequal ? "oui" : "non", s.rating, s.notes]; })); };
+}
+
+/* ================= Budget ================= */
+function vBudget(el) {
+  var edit = E.PROFILE === "finance";
+  var rows = E.list("bud").sort(function (a, b) { return (b.year + a.code).localeCompare(a.year + b.code); });
+  var h = '<div class="bar">' + (edit ? '<button class="btn" id="bAdd">+ Nouvelle ligne budgétaire</button>' : '<p class="small">Consultation seule. La gestion des lignes relève de la Finance.</p>') + '<span class="spacer"></span><button class="btn ghost" id="bCsv">Exporter CSV</button></div>';
+  h += '<section class="card"><div class="tw"><table class="tb"><thead><tr><th>Exercice</th><th>Code</th><th>Libellé</th><th>Source</th><th class="num">Dotation</th><th class="num">Réservé (BRC)</th><th class="num">Payé</th><th class="num">Disponible</th><th>Consommation</th></tr></thead><tbody>' +
+    rows.map(function (b) { var u = E.budgetUse(b), pct = num(b.amount) ? Math.min(100, (u.reserved + u.paid) / num(b.amount) * 100) : 0;
+      return '<tr data-bud="' + b.id + '"><td>' + esc(b.year) + '</td><td class="mono">' + esc(b.code) + "</td><td>" + esc(b.line) + "</td><td><small>" + esc(b.source || "") + '</small></td><td class="num">' + fmtN(b.amount) + '</td><td class="num">' + fmtN(u.reserved) + '</td><td class="num">' + fmtN(u.paid) + '</td><td class="num"><b>' + fmtN(u.avail) + '</b></td><td><span class="meter ' + (pct >= 90 ? "bad" : pct >= 70 ? "warn" : "") + '"><i style="width:' + pct + '%"></i></span><small>' + Math.round(pct) + " %</small></td></tr>"; }).join("") + "</tbody></table></div></section><div id=\"bForm\"></div>";
+  el.innerHTML = h;
+  var form = function (b) { var n = !b; b = b || { year: E.fy() };
+    $("#bForm").innerHTML = '<form class="card form" id="bf"><h3>' + (n ? "Nouvelle ligne budgétaire" : "Ligne " + esc(b.code)) + '</h3><div class="g4"><label>Exercice *<input name="year" required value="' + esc(b.year) + '"></label><label>Code *<input name="code" required value="' + esc(b.code || "") + '"></label><label>Dotation (FCFA) *<input name="amount" type="number" min="0" required value="' + esc(b.amount || "") + '"></label><label>Source de financement<input name="source" value="' + esc(b.source || "") + '" placeholder="État, ressources propres, PTF…"></label></div><label>Libellé *<input name="line" required value="' + esc(b.line || "") + '"></label><div class="bar end"><button type="button" class="btn ghost" id="bCancel">Annuler</button><button class="btn">Enregistrer</button></div></form>';
+    var f = $("#bf"); f.scrollIntoView({ behavior: "smooth" }); $("#bCancel").onclick = function () { $("#bForm").innerHTML = ""; };
+    f.onsubmit = function (ev) { ev.preventDefault();
+      var amt = num(f.amount.value), u = n ? { reserved: 0, paid: 0 } : E.budgetUse(b);
+      if (amt < u.reserved + u.paid) { E.toast("La dotation ne peut pas être inférieure aux montants déjà réservés et payés (" + fmtM(u.reserved + u.paid) + ").", "err"); return; }
+      var old = b.amount; ["year", "code", "line", "source"].forEach(function (k) { b[k] = f[k].value.trim(); }); b.amount = amt;
+      if (n) b.id = E.uid("B");
+      b.hist = (b.hist || []).concat([{ at: E.nowIso(), by: E.ME.name, note: n ? "Création — dotation " + fmtM(amt) : "Dotation " + fmtM(old) + " → " + fmtM(amt) }]);
+      E.put("bud", b); E.toast("Ligne " + b.code + " enregistrée.", "ok"); render(); };
+  };
+  if (edit) { $("#bAdd").onclick = function () { form(null); }; $$("[data-bud]").forEach(function (tr) { tr.onclick = function () { form(E.get("bud", tr.dataset.bud)); }; }); }
+  $("#bCsv").onclick = function () { csv("budget", ["Exercice", "Code", "Libellé", "Source", "Dotation", "Réservé", "Payé", "Disponible"], rows.map(function (b) { var u = E.budgetUse(b); return [b.year, b.code, b.line, b.source, b.amount, u.reserved, u.paid, u.avail]; })); };
+}
+
+/* ================= Référentiel ================= */
+function vRules(el) {
+  var b = E.BANDS, row = function (k) { return "<tr><td>" + E.NATURES[k] + '</td><td class="num">&lt; 10 M</td><td class="num">10 M – ' + fmtN(b[k].simp / E.M) + ' M</td><td class="num">' + fmtN(b[k].simp / E.M) + " M – " + fmtN(b[k].aon / E.M) + ' M</td><td class="num">&gt; ' + fmtN(b[k].aon / E.M) + " M</td></tr>"; };
+  el.innerHTML = '<section class="card"><h3>Seuils de passation (FCFA TTC)</h3><p class="small">Manuel Version 1 §7.1 · Art. 9 à 13 du Code des Marchés Publics · Décret N°2499/PR/2020. Le fractionnement pour échapper aux seuils est interdit (Art. 14 et 15).</p><div class="tw"><table class="tb"><thead><tr><th>Nature</th><th class="num">Consultation directe</th><th class="num">Procédure simplifiée (3 devis)</th><th class="num">Appel d\'offres national</th><th class="num">Appel d\'offres international</th></tr></thead><tbody>' +
+    Object.keys(E.NATURES).map(row).join("") + '</tbody></table></div><h4>Urgence (§13.2)</h4><ul class="ul"><li>&lt; 5 M : DG (ou SG par délégation) — mémo d\'urgence + 1 devis</li><li>5 à 30 M : DG + Agence Comptable — déclaration d\'urgence + 2 devis + BRC</li><li>&gt; 30 M : DG + notification du PCA — rapport d\'urgence, procédure légale (§13.3)</li></ul>' +
+    '<h4>Délégations (§4.6.2)</h4><ul class="ul"><li>Bons de commande en consultation directe (&lt; 10 M) : DG, ou DGA / SG par délégation</li><li>Marchés soumis à la CPM : DG uniquement, sauf empêchement constaté par écrit</li><li>PV de réception : responsable technique — jamais la personne qui ordonnance le paiement</li><li>Paiements &gt; 30 M : visa du Contrôle Financier (SOP 06)</li></ul></section>' +
+    E.PACKS.map(function (p) { return '<section class="card"><h3>' + esc(p.name) + '</h3><p class="small">' + esc(p.legal) + " · " + esc(p.approvers) + " · " + esc(p.delay) + "</p><ol class=\"clauses\">" + p.clauses.map(function (c) { return "<li><b>" + esc(c[0]) + ".</b> " + esc(c[1]) + "</li>"; }).join("") + "</ol></section>"; }).join("");
+}
+
+/* ================= Journal ================= */
+function vJournal(el) {
+  var rows = [];
+  E.list("req").forEach(function (r) { (r.history || []).forEach(function (x) { rows.push({ at: x.at, ref: r.no || "(brouillon)", id: r.id, what: (E.STAGE[x.st] || { lbl: x.st }).lbl, by: x.by, prof: x.prof || "", note: x.note || "" }); }); });
+  E.list("sup").forEach(function (s) { (s.hist || []).forEach(function (x) { rows.push({ at: x.at, ref: s.code, what: "Fournisseur", by: x.by, prof: "", note: s.name + " — " + x.note }); }); });
+  E.list("bud").forEach(function (b) { (b.hist || []).forEach(function (x) { rows.push({ at: x.at, ref: b.code, what: "Budget", by: x.by, prof: "", note: x.note }); }); });
+  rows.sort(function (a, b) { return (b.at || "").localeCompare(a.at || ""); });
+  el.innerHTML = '<div class="bar"><input id="jq" placeholder="Filtrer : référence, agent, action…"><span class="spacer"></span><button class="btn ghost" id="jCsv">Exporter CSV</button></div><section class="card" id="jT"></section>';
+  var draw = function () { var q = $("#jq").value.toLowerCase(); var R = rows.filter(function (x) { return !q || [x.ref, x.what, x.by, x.note].join(" ").toLowerCase().indexOf(q) >= 0; });
+    $("#jT").innerHTML = '<div class="tw"><table class="tb"><thead><tr><th>Date</th><th>Référence</th><th>Action / étape</th><th>Agent</th><th>Détail</th></tr></thead><tbody>' + R.slice(0, 400).map(function (x) { return "<tr" + (x.id ? ' data-open="' + esc(x.id) + '"' : "") + '><td class="mono">' + fmtDT(x.at) + '</td><td class="mono">' + esc(x.ref) + "</td><td>" + esc(x.what) + "</td><td>" + esc(x.by) + (x.prof ? "<small>" + esc(x.prof) + "</small>" : "") + "</td><td>" + esc(x.note) + "</td></tr>"; }).join("") + "</tbody></table></div>" + (R.length > 400 ? '<p class="small">400 premières lignes affichées sur ' + R.length + " — exportez pour l'intégralité.</p>" : "");
+    wireRows($("#jT")); };
+  draw(); $("#jq").oninput = draw;
+  $("#jCsv").onclick = function () { csv("journal", ["Date", "Référence", "Action", "Agent", "Profil", "Détail"], rows.map(function (x) { return [fmtDT(x.at), x.ref, x.what, x.by, x.prof, x.note]; })); };
+}
+
+/* ================= Aide ================= */
+function vHelp(el) {
+  el.innerHTML = '<section class="card"><h3>Le circuit d\'un dossier</h3><ol class="flow">' + E.STAGES.slice(1, 9).map(function (s, i) { return "<li><b>" + (i + 1) + ". " + esc(s.lbl) + "</b><span>" + esc(E.PROFILES[s.who].lbl) + (s.sla ? " · délai cible " + s.sla + " j" : "") + "</span></li>"; }).join("") + "</ol>" +
+    '<p class="small">Chaque étape franchie appose un visa daté et nominatif sur la fiche de circulation du dossier. Un dossier peut être retourné pour correction (avec motif) ou rejeté ; un rejet libère les crédits réservés.</p></section>' +
+    '<section class="card"><h3>Les profils</h3><dl class="kv">' + E.PROFILE_ORDER.map(function (k) { return "<dt>" + esc(E.PROFILES[k].lbl) + "</dt><dd>" + esc(E.PROFILES[k].d) + "</dd>"; }).join("") + "</dl></section>" +
+    '<section class="card"><h3>Contrôles automatiques</h3><ul class="ul"><li>Méthode de passation vérifiée contre le montant TTC et la nature du marché (§7.1).</li><li>Règle des trois devis de fournisseurs distincts en procédure simplifiée (§6.3) ; devis réduits en urgence (§13.2).</li><li>Appel d\'offres : DAO, publication ≥ 30 jours avant l\'ouverture (20 en urgence), PV CPM et délai de recours.</li><li>Alerte de fractionnement (Art. 14–15) et de besoin hors PPM.</li><li>BRC impossible si les crédits sont insuffisants.</li><li>Séparation des tâches : pas d\'avis ni d\'approbation sur sa propre demande ; le passateur ne certifie pas le budget du même dossier ; le signataire du PVIR n\'ordonnance pas le paiement.</li><li>Limites de délégation : DGA / SG &lt; 10 M ; au-delà, empêchement du DG constaté par écrit.</li><li>Facture ≤ montant du bon de commande / marché ; visa du Contrôle Financier au-delà de 30 M ; alerte au-delà de 45 jours (Art. 184).</li></ul></section>' +
+    '<section class="card"><h3>Données et synchronisation</h3><p>Chaque modification est enregistrée sur ce poste puis envoyée immédiatement à la base Google Sheets de l\'INSAPT (onglet « ERP »). Hors ligne, les modifications attendent et partent automatiquement au retour de la connexion. Une modification n\'efface jamais celle d\'un collègue : si un dossier a été modifié entre-temps ailleurs, la version la plus récente est conservée et rechargée.</p><p class="small">Pièces jointes : 2 Mo maximum par fichier.</p></section>';
+}
+
+/* ================= Impressions ================= */
+function printDoc(title, inner) {
+  var z = $("#printZone");
+  z.innerHTML = '<div class="pdoc"><div class="ph"><div><small>RÉPUBLIQUE DU TCHAD — Unité · Travail · Progrès</small><b>INSTITUT NATIONAL DE SANTÉ PUBLIQUE DU TCHAD (INSAPT)</b><small>N\'Djaména · EPST soumis au Code des Marchés Publics (Décret N°002130/PR/2020)</small></div><div class="pt">' + title + "</div></div>" + inner +
+    '<div class="pf">Généré par l\'ERP Achats INSAPT le ' + fmtDT(E.nowIso()) + " · Manuel de Passation des Marchés, Version 1 (septembre 2026)</div></div>";
+  document.body.classList.add("printing"); window.print(); setTimeout(function () { document.body.classList.remove("printing"); z.innerHTML = ""; }, 500);
+}
+function sigs(a) { return '<table class="psig"><tr>' + a.map(function (s) { return "<td><div></div><b>" + esc(s) + "</b></td>"; }).join("") + "</tr></table>"; }
+function printInstrument(r) {
+  var P = r.pass, s = E.get("sup", P.supplier) || {}, pk = E.PACK[P.pack], t = r.instr.type, ht = num(P.ht), tr = num(P.transport), tva = P.exo ? 0 : (ht + tr) * num(P.tva) / 100;
+  printDoc("<b>" + E.INSTR[t] + "</b><span>N° " + esc(r.instr.no) + "</span><span>Date : " + fmtD(r.instr.at) + "</span>",
+    '<table class="pmeta"><tr><td><b>TITULAIRE</b><br>' + esc(s.name || "Centrale Pharmaceutique d'Achat (CPA)") + "<br>" + esc(s.city || "") + " " + esc(s.phone || "") + "<br>" + (s.nif ? "NIF " + esc(s.nif) : "") + (s.rccm ? " · RCCM " + esc(s.rccm) : "") + "</td>" +
+    "<td><b>RÉFÉRENCES</b><br>Demande : " + esc(r.no) + " — " + esc(r.title) + "<br>Service : " + esc(r.section) + "<br>BRC : " + esc(r.fin.brc) + " (ligne " + esc((E.get("bud", r.fin.budId) || {}).code || "") + ")<br>Méthode : " + esc(pk.short) + "<br><i>" + esc(pk.legal) + "</i></td></tr></table>" +
+    '<table class="pt2"><tr><th>Désignation</th><th>Qté</th><th>Unité</th></tr>' + r.items.map(function (i) { return "<tr><td>" + esc(i.desc) + '</td><td class="c">' + fmtN(i.qty) + '</td><td class="c">' + esc(i.unit) + "</td></tr>"; }).join("") + "</table>" +
+    '<table class="ptot"><tr><td>Montant HT</td><td>' + fmtN(ht) + "</td></tr>" + (tr ? "<tr><td>Transport / livraison</td><td>" + fmtN(tr) + "</td></tr>" : "") + "<tr><td>TVA " + (P.exo ? "(exonérée)" : num(P.tva) + " %") + "</td><td>" + fmtN(tva) + '</td></tr><tr class="g"><td>MONTANT TOTAL TTC (FCFA)</td><td>' + fmtN(E.ttcOf(r)) + "</td></tr></table>" +
+    '<h4>CLAUSES CONTRACTUELLES APPLICABLES</h4><ol class="pcl">' + pk.clauses.map(function (c) { return "<li><b>" + esc(c[0]) + ".</b> " + esc(c[1]) + "</li>"; }).join("") + "</ol>" +
+    sigs(["Vu, l'Agent Comptable", (r.appr && r.appr.interim ? "Pour le Directeur Général empêché" : "Le Directeur Général") + "\nAutorité contractante", "Le Titulaire\nLu et approuvé"]));
+}
+function printFDA(r) {
+  printDoc("<b>FORMULAIRE DE DEMANDE D'ACQUISITION</b><span>" + esc(r.no || "Brouillon") + "</span><span>Date : " + fmtD(r.submittedAt || r.createdAt) + "</span>",
+    '<table class="pmeta"><tr><td><b>SERVICE DEMANDEUR</b><br>' + esc(r.section) + "<br>Demandeur : " + esc((r.createdBy || {}).name) + "</td><td><b>OBJET</b><br>" + esc(r.title) + "<br>Catégorie : " + esc(r.category) + " · " + E.NATURES[r.nature] + "<br>PPM : " + (r.ppm === "oui" ? "inscrit " + esc(r.ppmRef || "") : "NON inscrit") + (r.urgent ? "<br>URGENT — réf. " + esc(r.urgRef) : "") + "</td></tr></table>" +
+    '<table class="pt2"><tr><th>Désignation & spécifications</th><th>Qté</th><th>Unité</th><th>P.U. estimé</th><th>Total</th></tr>' + r.items.map(function (i) { return "<tr><td>" + esc(i.desc) + '</td><td class="c">' + fmtN(i.qty) + '</td><td class="c">' + esc(i.unit) + '</td><td class="r">' + fmtN(i.pu) + '</td><td class="r">' + fmtN(num(i.qty) * num(i.pu)) + "</td></tr>"; }).join("") + '<tr><td colspan="4" class="r"><b>Estimation totale (FCFA)</b></td><td class="r"><b>' + fmtN(E.reqEstimate(r)) + "</b></td></tr></table>" +
+    "<h4>JUSTIFICATION</h4><p>" + esc(r.just) + "</p>" + sigs(["Le demandeur", "Le chef de service\nAvis", "Le Service de Passation"]));
+}
+function printPVIR(r) {
+  var R = r.recv;
+  printDoc("<b>PROCÈS-VERBAL D'INSPECTION ET DE RÉCEPTION</b><span>" + esc(R.no) + "</span><span>Date : " + fmtD(R.at) + "</span>",
+    '<table class="pmeta"><tr><td><b>RÉFÉRENCES</b><br>' + esc(E.INSTR[r.instr.type]) + " " + esc(r.instr.no) + "<br>Demande " + esc(r.no) + " — " + esc(r.title) + "<br>Bon de livraison : " + esc(R.bl || "—") + "</td><td><b>TITULAIRE</b><br>" + esc((E.get("sup", r.pass.supplier) || {}).name || "CPA") + "<br><b>COMMISSION</b><br>" + esc(R.members || "—") + "</td></tr></table>" +
+    '<table class="pt2"><tr><th>Désignation</th><th>Commandé</th><th>Reçu</th></tr>' + r.items.map(function (i, k) { return "<tr><td>" + esc(i.desc) + '</td><td class="c">' + fmtN(i.qty) + '</td><td class="c">' + fmtN(R.qty[k]) + "</td></tr>"; }).join("") + "</table>" +
+    "<p><b>Conclusion :</b> " + (R.ok ? "biens / services conformes" : "réception avec réserves — " + esc(R.reserve)) + (R.complete ? " — réception complète." : " — réception partielle.") + "</p>" +
+    sigs(["Le responsable technique\n(SOP 05)", "Membre de la commission", "Le représentant du titulaire"]));
+}
+
+/* ================= Choix du profil ================= */
+function chooser() {
+  var cur = E.PROFILE;
+  $("#chooser").hidden = false;
+  $("#whoChooser").textContent = "Connecté : " + E.ME.name + " (" + E.ME.u + ") — " + E.ME.fn;
+  $("#chooser .cards").innerHTML = E.PROFILE_ORDER.map(function (k) {
+    var ok = E.ME.profiles.indexOf(k) >= 0, p = E.PROFILES[k], n = ok ? E.queueFor(k).length : 0;
+    return '<button class="pcard' + (ok ? "" : " off") + (cur === k ? " cur" : "") + '" data-p="' + k + '"' + (ok ? "" : " disabled") + '><i>' + p.ic + "</i><b>" + esc(p.lbl) + "</b><span>" + esc(p.d) + "</span>" +
+      (ok ? (n ? '<em class="badge">' + n + " à traiter</em>" : "") : '<em class="no">Non autorisé pour ce compte</em>') + "</button>";
+  }).join("");
+  $$("#chooser [data-p]").forEach(function (b) { b.onclick = function () { E.PROFILE = b.dataset.p; sessionStorage.setItem(E.SS_PROFILE, E.PROFILE); $("#chooser").hidden = true; $("#app").hidden = false; $("#profBtn").textContent = E.PROFILES[E.PROFILE].lbl + " ▾"; go("home"); route(); }; });
+  if (cur) { $("#chooseClose").hidden = false; $("#chooseClose").onclick = function () { $("#chooser").hidden = true; }; }
+}
+
+/* ================= Démarrage ================= */
+function start() {
+  E.ME = E.loadSession();
+  if (!E.ME) { $("#gate").hidden = false; return; }
+  E.loadDB();
+  $("#who").innerHTML = "<b>" + esc(E.ME.name) + "</b><small>" + esc(E.ME.u) + " · " + esc(E.ME.fn) + "</small>";
+  var saved = sessionStorage.getItem(E.SS_PROFILE);
+  if (saved && E.ME.profiles.indexOf(saved) >= 0) { E.PROFILE = saved; $("#app").hidden = false; $("#profBtn").textContent = E.PROFILES[saved].lbl + " ▾"; route(); }
+  else chooser();
+  $("#profBtn").onclick = chooser;
+  $("#syncPill").onclick = function () { E.Sync.run(); E.Files.retry(); };
+  window.addEventListener("hashchange", route);
+  E.Sync.start(); setTimeout(function () { E.Files.retry(); }, 3000);
+}
+document.addEventListener("DOMContentLoaded", start);
+window.ERP_TEST = { go: go, route: route, ACTIONS: ACTIONS };
+})();
+
+</script>
+</body>
+</html>

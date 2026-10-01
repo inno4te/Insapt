@@ -1,6 +1,6 @@
 /* ============================================================
    INSAPT Academy — catalogue des cours, leçons et banques de QCM
-   Contenu fondé sur : Manuel de Passation des Marchés INSAPT
+   Contenu fondé sur : Manuel de Passation des Marchés INSAPT (Version 1, septembre 2026)
    et Code des Marchés Publics (Décret N°2130/PR/2020, ARMP).
    Les leçons des niveaux de certification proviennent de
    manual-modules.js (chapitres réels du manuel).
@@ -279,7 +279,7 @@
               {h:"Le régime de sanctions (Titre VI ch. 4)",p:[
                 "<b>Administratif</b> : exclusion temporaire ou définitive, publiée au Journal Officiel des marchés. Un fournisseur exclu ne peut soumissionner nulle part.",
                 "<b>Pénal</b> : corruption, faux et usage de faux, détournement — peines d'emprisonnement, amendes, confiscation."]},
-              {h:"Mécanisme de signalement INSAPT (ch. 16, annexe S)",p:[
+              {h:"Mécanisme de signalement INSAPT (ch. 16, annexe T)",p:[
                 "Tout agent, fournisseur ou partenaire peut signaler via des canaux dédiés (boîte confidentielle, courrier sous pli fermé). Le signalement est enregistré, instruit et suivi. Le lanceur d'alerte de <b>bonne foi</b> est protégé contre toute représaille. Les signalements malveillants sont eux-mêmes sanctionnés."]},
               {h:"Zone grise : cadeaux et hospitalité",p:[
                 "Règle INSAPT : refus par défaut de tout cadeau d'un candidat actif. Cadeaux symboliques hors procédure : déclarés à la hiérarchie. Invitations à événements payés par fournisseurs : autorisation écrite préalable."]}
@@ -293,7 +293,7 @@
               "Corruption, fraude, collusion, coercition : tolérance zéro.",
               "Double sanction : administrative (exclusion, liste publique) + pénale.",
               "Signalement de bonne foi = protection garantie."],
-            src:"Code, art. 25-26, Titre VI ch. 4 ; Manuel INSAPT, ch. 16, annexe S."})},
+            src:"Code, art. 25-26, Titre VI ch. 4 ; Manuel INSAPT, ch. 16, annexe T."})},
 
         { t:{fr:"Le Dossier d'Appel d'Offres (DAO)",en:"The bidding documents (DAO)",ar:"ملف طلب العروض"},
           html:D({obj:"Assembler un DAO complet, rédiger des critères défendables, gérer les Q&R et addenda, éviter les vices de fond.",
@@ -987,7 +987,7 @@
               "Inscription sur dossier, validité 2 ans, mise à jour fournisseur.",
               "Évaluation post-contrat après chaque marché.",
               "VML ne remplace jamais la publicité d'un AOO."],
-            src:"Manuel INSAPT, ch. 12 SOP 2 et ch. 16 ; annexes R (VML) et T (fiche performance)."})},
+            src:"Manuel INSAPT, ch. 12 SOP 2 et ch. 16 ; annexe S (Répertoire des fournisseurs) et ch. 10 (performance des fournisseurs)."})},
 
         { t:{fr:"SOP 10 — KPIs, reporting & mécanisme de signalement",en:"SOP 10 — KPIs, reporting & whistleblowing",ar:"إجراء ١٠ — مؤشرات الأداء والتقارير والإبلاغ"},
           html:D({obj:"Définir les KPIs de la fonction achats INSAPT, construire le reporting trimestriel et annuel, et opérationnaliser le mécanisme de signalement.",
@@ -1005,7 +1005,7 @@
               {h:"Reporting trimestriel et annuel",p:[
                 "Chaque trimestre, la cellule produit un tableau de bord : marchés lancés, en cours, réceptionnés, montants engagés vs budget, KPIs du trimestre. Présenté en réunion de direction et transmis aux PTF si requis. En fin d'exercice, le rapport annuel consolide tous les marchés, analyse les écarts vs PPM, et tire les leçons."]},
               {h:"Le mécanisme de signalement opérationnel",p:[
-                "Le manuel INSAPT (ch. 16, annexe S) désigne un responsable du mécanisme de signalement, indique les canaux (boîte électronique dédiée, adresse postale confidentielle, permanence téléphonique) et définit le processus : enregistrement, instruction, réponse à l'alerteur sous 30 jours, suivi. Chaque signalement est archivé sous pli confidentiel. L'alerteur de bonne foi est protégé contre toute représaille."]}
+                "Le manuel INSAPT (ch. 16, annexe T) désigne un responsable du mécanisme de signalement, indique les canaux (boîte électronique dédiée, adresse postale confidentielle, permanence téléphonique) et définit le processus : enregistrement, instruction, réponse à l'alerteur sous 30 jours, suivi. Chaque signalement est archivé sous pli confidentiel. L'alerteur de bonne foi est protégé contre toute représaille."]}
             ],
             ex:"Revue Q3. Délai moyen de passation = 68 jours (vs cible 45) — cause : délai moyen DGCMP de 15 jours pour les dossiers INSAPT (cible 7). Action : réunion avec la DGCMP pour identifier les lacunes. Taux d'infructuosité = 22 % (vs cible 15 %) — cause : spécifications trop restrictives pour les réactifs de biochimie. Action : révision des spécifications avec les biologistes.",
             traps:[
@@ -1017,7 +1017,7 @@
               "7 KPIs : délai passation, exécution PPM, infructuosité, économies, délais livraison, recours, délais paiement.",
               "Reporting trimestriel à la DG + PTF si requis.",
               "Signalement : canal dédié + instruction sous 30 jours + protection de l'alerteur."],
-            src:"Manuel INSAPT, ch. 12 SOP, annexes Q (KPIs), S (signalement), T (performance fournisseurs)."})},
+            src:"Manuel INSAPT, ch. 12 SOP, ch. 17 (KPIs), annexe T (signalement), ch. 10 (performance des fournisseurs)."})},
       ]
     },
 
@@ -1053,7 +1053,7 @@
       id: "l4", icon: "Ⅳ", color: "#C60C30", cert: true, requires: ["l1", "l2", "l3"],
       exam: { pool: ["l4"], n: 40, minutes: 80 },
       name: { fr: "Certification INSAPT — Niveau 4 (Expert)", en: "INSAPT Certification — Level 4 (Expert)", ar: "شهادة المعهد — المستوى الرابع (خبير)" },
-      desc: { fr: "Le niveau le plus élevé : synthèse du Manuel complet et du Code des Marchés Publics en 15 modules (annexes SOP, RFI/RFP/RFQ, répertoire fournisseurs, signalement, et l'intégralité du Code par Titres). Examen expert chronométré de 80 minutes. Débloqué après validation des Niveaux 1 à 3.", en: "The highest level: full Manual + Procurement Code synthesis in 15 modules. 80-minute expert exam. Unlocked after Levels 1-3.", ar: "أعلى مستوى: ١٥ وحدة وامتحان ٨٠ دقيقة — يُفتح بعد المستويات ١–٣" },
+      desc: { fr: "Le niveau le plus élevé : synthèse du Manuel complet et du Code des Marchés Publics en 15 modules (annexes R à V du Manuel Version 1 — RFI/RFP/RFQ, répertoire des fournisseurs, signalement, double conformité PTF —, la passation directe par la CPM de la Version B, et l'intégralité du Code par Titres). Examen expert chronométré de 80 minutes. Débloqué après validation des Niveaux 1 à 3.", en: "The highest level: full Manual + Procurement Code synthesis in 15 modules. 80-minute expert exam. Unlocked after Levels 1-3.", ar: "أعلى مستوى: ١٥ وحدة وامتحان ٨٠ دقيقة — يُفتح بعد المستويات ١–٣" },
       manualChapters: [20, 21, 22, 23, 24],
       codeTitres: true // + 10 modules generated from Code Titres at runtime
     }

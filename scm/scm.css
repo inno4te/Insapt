@@ -177,3 +177,29 @@ table.doc-tbl th{background:var(--navy-050);font-weight:700;color:var(--navy-900
 .toast.ok{background:var(--ok)}.toast.err{background:var(--danger)}
 
 @media print{.side,.topbar,.no-print{display:none!important}.app.on{display:block}.content{padding:0}.bc-label{break-inside:avoid}}
+
+/* ---- Manuel Version 1 (sept. 2026) ---- */
+.mver-head{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--navy-050);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-bottom:22px;position:sticky;top:0;z-index:2}
+.mver-head b{display:block;color:var(--navy-800);font-size:14.5px}
+.mver-head small{color:var(--slate);font-size:12px}
+.mver-switch{display:flex;gap:6px;flex-wrap:wrap}
+.mver-switch button{border:1.5px solid var(--line);background:#fff;color:var(--navy-800);border-radius:8px;padding:7px 12px;font:600 12.5px var(--ff-body);cursor:pointer}
+.mver-switch button[aria-pressed="true"]{background:var(--tchad-blue);border-color:var(--tchad-blue);color:#fff}
+.manual-body .m-ann{border-bottom-color:var(--tchad-red);font-size:19px}
+.manual-body .m-note{background:var(--wash);border-left:3px solid var(--tchad-gold);padding:8px 12px;border-radius:0 6px 6px 0}
+.manual-body .m-tablewrap{overflow-x:auto;margin:10px 0 16px}
+.manual-body .m-table{width:100%;border-collapse:collapse;font-size:13px}
+.manual-body .m-table th{background:var(--tchad-blue);color:#fff;text-align:left;padding:7px 10px;font-size:12px;vertical-align:top}
+.manual-body .m-table td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.manual-body .m-table tr:nth-child(even) td{background:var(--wash)}
+.manual-toc li.toc-ann a{font-size:12px;color:var(--slate);padding-left:18px}
+.manual-toc li[hidden]{display:none}
+
+/* ---- Accès ERP Achats ---- */
+.erp-cta{display:flex;align-items:center;gap:16px;margin:4px 0 20px;padding:18px 20px;border-radius:14px;text-decoration:none;color:#fff;
+  background:linear-gradient(120deg,var(--navy-900),var(--tchad-blue) 70%);border-left:6px solid var(--tchad-gold);box-shadow:var(--shadow-md);transition:transform .15s}
+.erp-cta:hover{transform:translateY(-2px)}
+.erp-ic{flex:0 0 48px;height:48px;border-radius:12px;background:var(--tchad-gold);color:var(--navy-900);display:grid;place-items:center;font:900 24px var(--ff-display)}
+.erp-tx{flex:1} .erp-tx b{display:block;font:800 17px var(--ff-display)} .erp-tx small{display:block;opacity:.8;font-size:12.5px;margin-top:3px;line-height:1.45}
+.erp-go{font-weight:700;color:var(--tchad-gold);white-space:nowrap}
+@media(max-width:700px){.erp-cta{flex-wrap:wrap}.erp-go{width:100%}}

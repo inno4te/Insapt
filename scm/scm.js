@@ -7,9 +7,15 @@
 (function () {
   "use strict";
 
-  // ---- Credentials (as specified). Client-side gate only. ----
-  const CRED = { user: "insaptscm", pass: "insaptst0ck" };
-  const SESSION_KEY = "insapt.scm.session";
+  // ---- Comptes : voir accounts.js (11 comptes, mots de passe hachés). Contrôle côté client. ----
+  const SESSION_KEY = "insapt.scm.session";   // contient l'identifiant connecté
+  const USER_KEY = "insapt.scm.user";          // fiche du compte (lue aussi par l'ERP Achats)
+  function currentAccount() {
+    const v = sessionStorage.getItem(SESSION_KEY);
+    if (!v) return null;
+    const id = v === "1" ? "insaptscm" : v;   // compatibilité anciennes sessions
+    return (window.SCM_ACCOUNTS || []).find(a => a.u === id) || null;
+  }
   const DB_KEY = "insapt.scm.db";
   const SEQ_KEY = "insapt.scm.seq";
   const GS_KEY = "insapt.scm.gs";
@@ -42,6 +48,10 @@
 
   // ---------- Auth ----------
   function showApp() {
+    const acc = currentAccount();
+    if (!acc) { sessionStorage.removeItem(SESSION_KEY); return; }
+    sessionStorage.setItem(USER_KEY, JSON.stringify({ u: acc.u, name: acc.name, fn: acc.fn, profiles: acc.profiles, final: acc.final, admin: acc.admin }));
+    if ($("#whoUser")) $("#whoUser").textContent = acc.name + " (" + acc.u + ")";
     $("#loginWrap").style.display = "none";
     $("#app").classList.add("on");
     renderAll();
@@ -53,17 +63,19 @@
   }
   function logout() {
     sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(USER_KEY);
+    sessionStorage.removeItem("insapt.erp.profile");
     location.reload();
   }
-  if (sessionStorage.getItem(SESSION_KEY) === "1") { document.addEventListener("DOMContentLoaded", showApp); }
+  if (sessionStorage.getItem(SESSION_KEY)) { document.addEventListener("DOMContentLoaded", showApp); }
 
   document.addEventListener("DOMContentLoaded", () => {
     // login form
     $("#loginForm").addEventListener("submit", e => {
       e.preventDefault();
-      const u = $("#u").value.trim(), p = $("#p").value;
-      if (u === CRED.user && p === CRED.pass) {
-        sessionStorage.setItem(SESSION_KEY, "1");
+      const acc = window.scmFindAccount && window.scmFindAccount($("#u").value, $("#p").value);
+      if (acc) {
+        sessionStorage.setItem(SESSION_KEY, acc.u);
         $("#loginErr").classList.remove("show");
         showApp();
       } else {
@@ -413,6 +425,14 @@
         const id = a.getAttribute("href").slice(1);
         const el = document.getElementById(id);
         if (el) $("#manualBody").scrollTo({ top: el.offsetTop - 10, behavior: "smooth" });
+      }));
+      // Version A (circuit CPA) / Version B (passation directe CPM) switch
+      $$("#manualBody .mver-switch button").forEach(btn => btn.addEventListener("click", () => {
+        const v = btn.dataset.ver;
+        $$("#manualBody .mver-switch button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+        $$("#manualBody .mver").forEach(d => { d.hidden = d.dataset.ver !== v; });
+        $$("#manualToc li[data-ver]").forEach(li => { li.hidden = li.dataset.ver !== v; });
+        $("#manualBody").scrollTo({ top: 0 });
       }));
       manualLoaded = true;
     } catch (e) {

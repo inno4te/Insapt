@@ -43,6 +43,12 @@
  *   POST {action:"ls_auth",  user, pass}     -> {ok, role, name}  (no key needed)
  *   POST {action:"ls_bulk_upsert", key, records} -> {ok:true, count}  (ADDITIVE push)
  *
+ * ERP ACHATS endpoints (record-level, additive, stale writes refused)
+ *   GET  ?action=erp_list&key=...[&since=ISO] -> {ok:true, records:[{coll,id,updated,data}]}
+ *   POST {action:"erp_upsert", key, rec}         -> {ok, count, stale:[...]}
+ *   POST {action:"erp_bulk",   key, recs}        -> {ok, count, stale:[...]}
+ *   POST {action:"erp_file_put", key, id,name,type,data} / GET ?action=erp_file_get&id=
+ *
  * SYNC POLICY: ls_bulk_upsert and ls_upsert are ALWAYS additive (insert-or-update).
  *   NEVER use ls_seed (full-replace) from autoConnect.
  *   ls_seed is reserved for deliberate manual resets only.
@@ -79,6 +85,8 @@ function doGet(e) {
   if (p.action === 'ls_list')       return json({ ok:true, records:lsList() });
   if (p.action === 'ls_moves')      return json({ ok:true, moves:lsMoves() });
   if (p.action === 'ls_users')      return json({ ok:true, users:lsListUsers() });
+  if (p.action === 'erp_list')      return json({ ok:true, records:erpList(p.since) });
+  if (p.action === 'erp_file_get')  return json(erpFileGet(p.id));
   if (p.action === 'el_admin_list') {
     if (!isAdmin(p.admin)) return json({ ok:false, error:'admin auth' });
     return json({ ok:true, learners:listLearners() });
@@ -107,6 +115,11 @@ function doPost(e) {
   if (body.action === 'ls_user_upsert' && body.user_rec) { lsUpsertUser(body.user_rec); return json({ ok:true }); }
   if (body.action === 'ls_bulk_upsert' && body.records)  { return json({ ok:true, count:lsBulkUpsert(body.records) }); }
   if (body.action === 'ls_auth')   { return json(lsAuth(body.user, body.pass)); }
+
+  // ERP Achats INSAPT (additif : insertion ou mise à jour par enregistrement, jamais d'effacement)
+  if (body.action === 'erp_upsert' && body.rec)   return json(erpUpsertSafe([body.rec]));
+  if (body.action === 'erp_bulk'   && body.recs)  return json(erpUpsertSafe(body.recs));
+  if (body.action === 'erp_file_put' && body.id)  return json(erpFilePut(body));
 
   if (body.action === 'el_login')      return json(elLogin(body.name, body.section));
   if (body.action === 'el_save')       return json(elSave(body));
@@ -552,6 +565,80 @@ function lsHashPass(pass) {
   return bytes.map(function(b){ return ('0'+(b & 0xFF).toString(16)).slice(-2); }).join('');
 }
 
+
+/* ==================== ERP ACHATS INSAPT ====================
+   Feuille ERP      : une ligne par enregistrement (dossier, fournisseur, ligne budgétaire, journal…)
+                      colonnes key | coll | id | updated | data(JSON)
+   Feuille ERPFiles : pièces jointes découpées en morceaux de 40 000 caractères
+                      colonnes fileId | part | total | name | type | updated | chunk
+   Politique : insertion ou mise à jour par enregistrement. Une écriture plus ancienne que
+   la version stockée est refusée (renvoie la version actuelle). Rien n'est jamais effacé.
+============================================================ */
+var ERP_COLS  = ['key','coll','id','updated','data'];
+var ERPF_COLS = ['fileId','part','total','name','type','updated','chunk'];
+var ERP_CHUNK = 40000;
+
+function getErpSheet()  { return getSheetByName('ERP', ERP_COLS); }
+function getErpFSheet() { return getSheetByName('ERPFiles', ERPF_COLS); }
+
+function erpList(since) {
+  var sh = getErpSheet(), v = sh.getDataRange().getValues(), out = [];
+  for (var i = 1; i < v.length; i++) {
+    if (!v[i][0]) continue;
+    var up = String(v[i][3] || '');
+    if (since && up <= String(since)) continue;
+    var d = null; try { d = JSON.parse(v[i][4]); } catch (e) { continue; }
+    out.push({ coll: String(v[i][1]), id: String(v[i][2]), updated: up, data: d });
+  }
+  return out;
+}
+
+function erpUpsertSafe(recs) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(20000); } catch (e) { return { ok:false, error:'busy' }; }
+  try {
+    var sh = getErpSheet();
+    sh.getRange('D:E').setNumberFormat('@');   // texte brut AVANT écriture : évite la conversion des dates ISO
+    var v = sh.getDataRange().getValues(), map = {}, stale = [], n = 0, add = [];
+    for (var i = 1; i < v.length; i++) if (v[i][0]) map[String(v[i][0])] = { row: i + 1, updated: String(v[i][3] || ''), data: v[i][4] };
+    recs.forEach(function (r) {
+      if (!r || !r.coll || !r.id) return;
+      var key = r.coll + ':' + r.id, up = String(r.updated || new Date().toISOString());
+      var js = JSON.stringify(r.data || {});
+      if (js.length > 49000) { stale.push({ key:key, error:'too large' }); return; }
+      var cur = map[key];
+      if (cur && cur.updated > up) {          // version stockée plus récente : on refuse l'écriture
+        var cd = null; try { cd = JSON.parse(cur.data); } catch (e) {}
+        stale.push({ coll:r.coll, id:r.id, updated:cur.updated, data:cd }); return;
+      }
+      var row = [key, r.coll, r.id, up, js];
+      if (cur && cur.row > 0) sh.getRange(cur.row, 1, 1, ERP_COLS.length).setValues([row]);
+      else if (cur) { add[cur.addIdx] = row; cur.updated = up; cur.data = js; }   // même clé deux fois dans le lot
+      else { map[key] = { row: -1, addIdx: add.length, updated: up, data: js }; add.push(row); }
+      n++;
+    });
+    if (add.length) sh.getRange(sh.getLastRow() + 1, 1, add.length, ERP_COLS.length).setValues(add);
+    return { ok:true, count:n, stale:stale };
+  } finally { lock.releaseLock(); }
+}
+
+function erpFilePut(b) {
+  var data = String(b.data || '');
+  if (data.length > 3000000) return { ok:false, error:'fichier trop volumineux (max ~2 Mo)' };
+  var sh = getErpFSheet(), total = Math.max(1, Math.ceil(data.length / ERP_CHUNK)), rows = [], up = new Date().toISOString();
+  for (var i = 0; i < total; i++) rows.push([b.id, i + 1, total, b.name || '', b.type || '', up, data.substr(i * ERP_CHUNK, ERP_CHUNK)]);
+  sh.getRange(sh.getLastRow() + 1, 1, rows.length, ERPF_COLS.length).setValues(rows);
+  return { ok:true, id:b.id, parts:total };
+}
+
+function erpFileGet(id) {
+  var v = getErpFSheet().getDataRange().getValues(), parts = {}, meta = null;
+  for (var i = 1; i < v.length; i++) if (String(v[i][0]) === String(id)) { parts[v[i][1]] = v[i][6]; meta = { total:v[i][2], name:v[i][3], type:v[i][4] }; }
+  if (!meta) return { ok:false, error:'introuvable' };
+  var d = ''; for (var k = 1; k <= meta.total; k++) { if (parts[k] === undefined) return { ok:false, error:'fichier incomplet' }; d += parts[k]; }
+  return { ok:true, id:id, name:meta.name, type:meta.type, data:d };
+}
+
 /* ==================== UTIL ==================== */
 
 function json(obj) {
@@ -560,6 +647,6 @@ function json(obj) {
 
 /* Run once from the editor to create all tabs and grant scopes. */
 function setup() {
-  getSheet(); getCodeSheet(); getELSheet(); getELSetSheet(); getLabSheet(); getLabMoveSheet(); getLabUserSheet();
+  getSheet(); getCodeSheet(); getELSheet(); getELSetSheet(); getLabSheet(); getLabMoveSheet(); getLabUserSheet(); getErpSheet(); getErpFSheet();
   Logger.log('Spreadsheet ready: ' + getSpreadsheet().getUrl());
 }

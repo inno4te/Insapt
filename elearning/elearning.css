@@ -164,3 +164,11 @@ table.data th{background:var(--navy-050);font:700 11.5px var(--ff-body);text-tra
 .toast.show{opacity:1;transform:none}
 .toast.ok{background:var(--ok)}.toast.err{background:var(--danger)}.toast.warn{background:var(--warn)}
 @media print{.topbar,.no-print{display:none!important}}
+
+/* ---- Manuel Version 1 : tableaux et encadrés dans les leçons ---- */
+.m-tablewrap{overflow-x:auto;margin:10px 0 16px}
+.m-table{width:100%;border-collapse:collapse;font-size:13px}
+.m-table th{background:#002664;color:#fff;text-align:left;padding:7px 10px;font-size:12px;vertical-align:top}
+.m-table td{padding:7px 10px;border-bottom:1px solid #dce4f0;vertical-align:top}
+.m-table tr:nth-child(even) td{background:#f4f7fc}
+.m-note{background:#f4f7fc;border-left:3px solid #FECB00;padding:8px 12px;border-radius:0 6px 6px 0}
