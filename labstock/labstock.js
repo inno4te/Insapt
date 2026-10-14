@@ -159,7 +159,7 @@
     ["serial", "N° de série"], ["qty_received", "Qté reçue"], ["qty_remaining", "Qté restante"],
     ["unit", "Unité"], ["date_reception", "Date réception"], ["date_manufacture", "Date fabrication"],
     ["date_expiry", "Date péremption"], ["location", "Emplacement"], ["temperature", "Température"],
-    ["status", "Statut"], ["source", "Source"], ["notes", "Observations"]
+    ["status", "Statut"], ["source", "Source"], ["received_by", "Réceptionnaire"], ["notes", "Observations"]
   ];
   function exportRows(name, rows) {
     var hd = EXPORT_COLS.map(function (c) { return c[1]; }).concat(["Alerte péremption", "Jours restants"]);
@@ -168,6 +168,59 @@
         .concat([BAND_LBL[band(r)], daysTo(r.date_expiry)]);
     });
     downloadCSV(name, hd, data);
+  }
+
+  /* ---------- Export PDF (jsPDF + AutoTable) ---------- */
+  function loadPDFLibs(cb) {
+    var need = function () {
+      if (window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable) return cb();
+      var s2 = document.createElement("script");
+      s2.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js";
+      s2.onload = cb; s2.onerror = function () { toast("Bibliothèque PDF indisponible (connexion requise)", "err"); };
+      document.head.appendChild(s2);
+    };
+    if (window.jspdf) return need();
+    var s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    s.onload = need; s.onerror = function () { toast("Bibliothèque PDF indisponible (connexion requise)", "err"); };
+    document.head.appendChild(s);
+  }
+  var PDF_LOT_COLS = [["Désignation", function (r) { return r.name; }], ["Lot", function (r) { return r.lot || r.catalog_ref || "—"; }],
+    ["Qté", function (r) { return (qty(r) || 0).toLocaleString("fr") + (r.unit ? " " + r.unit : ""); }],
+    ["Péremption", function (r) { return fmtD(r.date_expiry); }], ["Jours", function (r) { var d = daysTo(r.date_expiry); return d === null ? "—" : String(d); }],
+    ["Alerte", function (r) { return BAND_LBL[band(r)] || ""; }], ["Emplacement", function (r) { return r.location || ""; }],
+    ["Temp.", function (r) { return r.temperature || ""; }], ["Catégorie", function (r) { return r.category || ""; }],
+    ["Source", function (r) { return r.source || ""; }], ["Réceptionnaire", function (r) { return r.received_by || ""; }]];
+  function exportPDF(title, head, body, subtitle) {
+    loadPDFLibs(function () {
+      var doc = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      var W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
+      var who = CURRENT_USER ? (CURRENT_USER.name || CURRENT_USER.user) : "";
+      var hdr = function () {
+        doc.setFillColor(0, 38, 100); doc.rect(0, 0, W, 16, "F");
+        doc.setFillColor(254, 203, 0); doc.rect(0, 16, W, 1.2, "F");
+        doc.setTextColor(255); doc.setFontSize(12); doc.setFont("helvetica", "bold");
+        doc.text("INSAPT · LaBiEp — Lab Stock", 10, 7);
+        doc.setFontSize(9); doc.setFont("helvetica", "normal");
+        doc.text(title + (subtitle ? "  ·  " + subtitle : ""), 10, 12.5);
+        doc.text(new Date().toLocaleString("fr") + (who ? "  ·  " + who : ""), W - 10, 7, { align: "right" });
+        doc.text(body.length + " ligne(s)", W - 10, 12.5, { align: "right" });
+      };
+      doc.autoTable({ head: [head], body: body, startY: 21, margin: { top: 21, left: 8, right: 8, bottom: 12 },
+        styles: { fontSize: 7.2, cellPadding: 1.4, overflow: "linebreak" }, headStyles: { fillColor: [0, 38, 100], textColor: 255, fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [244, 247, 252] },
+        didDrawPage: function () {
+          hdr(); doc.setTextColor(110); doc.setFontSize(7.5);
+          doc.text("Conforme SOP R-3 — Manuel de Passation des Marchés INSAPT", 8, H - 5);
+          doc.text("Page " + doc.internal.getNumberOfPages(), W - 8, H - 5, { align: "right" });
+        } });
+      doc.save("INSAPT_LaBiEp_" + title.replace(/[^A-Za-z0-9À-ÿ]+/g, "_") + "_" + nowISO() + ".pdf");
+      toast("PDF généré — " + body.length + " ligne(s)", "ok");
+    });
+  }
+  function exportLotsPDF(title, rows, subtitle) {
+    if (!rows.length) { toast("Aucune ligne à exporter", "err"); return; }
+    exportPDF(title, PDF_LOT_COLS.map(function (c) { return c[0]; }), rows.map(function (r) { return PDF_LOT_COLS.map(function (c) { return String(c[1](r) == null ? "" : c[1](r)); }); }), subtitle);
   }
 
   /* ================= LOGIN ================= */
@@ -316,7 +369,8 @@
       out:      ["Sortie de stock PPSO/FEFO","Prélèvement selon le principe Premier Périmé Sorti en Premier"],
       recv:     ["Réception",               "Enregistrement d'un nouveau lot avec contrôles SOP R-2"],
       upload:   ["Importer des données",    "Import Excel ou CSV dans la base de stock"],
-      rep:      ["Rapports",                "Rapports réglementaires exportables en CSV"],
+      rep:      ["Rapports",                "Rapports réglementaires exportables en CSV ou PDF"],
+      forms:    ["Formulaires",             "Formulaires électroniques LaBiEp — SOP R-1 à R-4 et réception (PON 05)"],
       order:    ["Niveaux de commande",     "Recommandations de réapprovisionnement et points de commande"],
       ana:      ["Analyse",                 "Doublons, qualité des données et indicateurs"],
       admindash:["Tableau de bord admin",   "Surveillance complète — péremptions, conformité FEFO, inventaire"],
@@ -481,7 +535,7 @@
       var b = band(r);
       var cls = b === "exp" ? "row-exp" : b === "d30" ? "row-30" : b === "d90" ? "row-90" :
                 b === "nodate" ? "row-nodate" : "";
-      h += '<tr class="' + cls + '">' +
+      h += '<tr class="row-click ' + cls + '" data-row="' + r.id + '">' +
         '<td class="t-name">' + esc(r.name) + '<span class="t-sub">' + esc(r.manufacturer || r.subcategory || "") + "</span></td>" +
         '<td class="mono">' + esc(r.lot || r.catalog_ref || "—") + "</td>" +
         '<td class="num">' + (qty(r) ? qty(r).toLocaleString("fr") : '<span class="pill zero">0</span>') +
@@ -492,6 +546,7 @@
         "<td>" + esc(r.category) + "</td>" +
         '<td><span class="t-sub">' + esc(r.source) + "</span></td>" +
         '<td style="white-space:nowrap">' +
+          '<button class="btn btn-ghost btn-xs btn-view" data-view="' + r.id + '">Voir détails</button> ' +
           '<button class="btn btn-ghost btn-xs" data-edit="' + r.id + '">Modifier</button> ' +
           '<button class="btn btn-ghost btn-xs" data-del="' + r.id + '">Suppr.</button></td></tr>';
     });
@@ -507,11 +562,61 @@
       };
     });
     $$("#invBody [data-edit]").forEach(function (b2) {
-      b2.onclick = function () { openEdit(b2.dataset.edit); };
+      b2.onclick = function (ev) { ev.stopPropagation(); openEdit(b2.dataset.edit); };
+    });
+    $$("#invBody [data-view]").forEach(function (b2) {
+      b2.onclick = function (ev) { ev.stopPropagation(); openDetails(b2.dataset.view); };
+    });
+    $$("#invBody tr[data-row]").forEach(function (tr) {
+      tr.onclick = function (ev) { if (ev.target.closest("button")) return; openDetails(tr.dataset.row); };
     });
     $$("#invBody [data-del]").forEach(function (b2) {
-      b2.onclick = function () { delLot(b2.dataset.del); };
+      b2.onclick = function (ev) { ev.stopPropagation(); delLot(b2.dataset.del); };
     });
+  }
+
+  /* ------------- Fiche détaillée d'un lot (lecture seule) ------------- */
+  var STATUS_LBL = { active: "En service", quarantine: "Quarantaine", expired_flagged: "Signalé périmé", out_of_service: "Hors service" };
+  function openDetails(id) {
+    var r = DB.filter(function (x) { return x.id === id; })[0]; if (!r) return;
+    var d = daysTo(r.date_expiry);
+    var row = function (l, v) { return "<tr><th>" + esc(l) + "</th><td>" + (v === "" || v == null ? '<span class="t-sub">—</span>' : esc(v)) + "</td></tr>"; };
+    var mv = MOVES.filter(function (m) { return m.id === id; });
+    var K = { in: "Entrée", out: "Sortie", scrap: "Rebut", edit: "Modification", del: "Suppression" };
+    var h = '<div class="modal-box wide"><div class="modal-h"><h3>Fiche du lot — ' + esc(r.name) + '</h3>' +
+      '<button class="modal-x" data-close type="button" aria-label="Fermer">×</button></div><div class="modal-b">' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">' + bandPill(r) +
+      '<span class="pill info">' + esc(STATUS_LBL[r.status] || r.status || "—") + "</span>" +
+      (d !== null ? '<span class="pill ' + (d < 0 ? "exp" : d <= 90 ? "d30" : "ok") + '">' + (d < 0 ? "Périmé depuis " + (-d) + " j" : d + " jours restants") + "</span>" : "") + "</div>" +
+      '<div class="grid2"><div><h4 class="dt-h">Identification</h4><table class="dt">' +
+      row("Désignation", r.name) + row("Catégorie", r.category) + row("Sous-catégorie", r.subcategory) + row("Fabricant", r.manufacturer) +
+      row("Réf. catalogue", r.catalog_ref) + row("N° de lot", r.lot) + row("N° de série", r.serial) + row("Identifiant système", r.id) + "</table>" +
+      '<h4 class="dt-h">Réception et origine</h4><table class="dt">' + row("Source / financement", r.source) + row("Réceptionnaire", r.received_by) +
+      row("Date de réception", fmtD(r.date_reception)) + row("Dernière mise à jour", r.last_update) + "</table></div>" +
+      '<div><h4 class="dt-h">Quantités et conservation</h4><table class="dt">' +
+      row("Quantité reçue", r.qty_received == null ? "" : r.qty_received + " " + (r.unit || "")) +
+      row("Quantité restante", (qty(r) || 0) + " " + (r.unit || "")) + row("Seuil minimum", r.min_level) +
+      row("Date de fabrication", fmtD(r.date_manufacture)) + row("Date de péremption", fmtD(r.date_expiry)) +
+      row("Emplacement", r.location) + row("Température", r.temperature) + "</table>" +
+      '<h4 class="dt-h">Observations</h4><div class="dt-notes">' + (r.notes ? esc(r.notes) : '<span class="t-sub">Aucune observation</span>') + "</div></div></div>" +
+      '<h4 class="dt-h">Historique des mouvements (' + mv.length + ")</h4>" +
+      (mv.length ? '<div class="tbl-scroll"><table class="tbl"><thead><tr><th>Date</th><th>Type</th><th class="num">Qté</th><th>Agent</th><th>Observation</th></tr></thead><tbody>' +
+        mv.slice(0, 50).map(function (m) { return '<tr><td class="mono">' + esc((m.ts || "").replace("T", " ").slice(0, 16)) + "</td><td>" + esc(K[m.kind] || m.kind) + '</td><td class="num">' + (m.qty == null ? "—" : esc(m.qty)) + "</td><td>" + esc(m.who || m.user || "—") + "</td><td>" + esc(m.note || "") + "</td></tr>"; }).join("") +
+        "</tbody></table></div>" : '<div class="t-sub">Aucun mouvement enregistré sur ce poste pour ce lot.</div>') +
+      '</div><div class="modal-f"><button class="btn btn-ghost" type="button" id="dtPdf">Exporter la fiche en PDF</button>' +
+      '<button class="btn btn-ghost" type="button" data-close>Fermer</button><button class="btn" type="button" id="dtEdit">Modifier</button></div></div>';
+    var m = $("#mGeneric"); m.innerHTML = h; m.classList.add("on");
+    $$("[data-close]", m).forEach(function (b) { b.onclick = function () { m.classList.remove("on"); }; });
+    $("#dtEdit").onclick = function () { m.classList.remove("on"); openEdit(id); };
+    $("#dtPdf").onclick = function () {
+      var rows = [["Désignation", r.name], ["Catégorie", r.category], ["Sous-catégorie", r.subcategory], ["Fabricant", r.manufacturer], ["Réf. catalogue", r.catalog_ref],
+        ["N° de lot", r.lot], ["N° de série", r.serial], ["Source / financement", r.source], ["Réceptionnaire", r.received_by], ["Date de réception", fmtD(r.date_reception)],
+        ["Quantité reçue", r.qty_received], ["Quantité restante", (qty(r) || 0) + " " + (r.unit || "")], ["Seuil minimum", r.min_level], ["Date de fabrication", fmtD(r.date_manufacture)],
+        ["Date de péremption", fmtD(r.date_expiry)], ["Alerte", BAND_LBL[band(r)]], ["Emplacement", r.location], ["Température", r.temperature],
+        ["Statut", STATUS_LBL[r.status] || r.status], ["Observations", r.notes], ["Identifiant", r.id]].map(function (x) { return [x[0], x[1] == null ? "" : String(x[1])]; });
+      mv.slice(0, 30).forEach(function (x) { rows.push(["Mouvement " + (x.ts || "").slice(0, 10), (K[x.kind] || x.kind) + " · " + (x.qty == null ? "" : x.qty) + " · " + (x.who || "") + " · " + (x.note || "")]); });
+      exportPDF("Fiche lot " + (r.lot || r.id), ["Champ", "Valeur"], rows, r.name);
+    };
   }
 
   /* ------------- Add / Edit lot ------------- */
@@ -523,7 +628,7 @@
     $("#mTitle").textContent = id ? "Modifier le lot" : "Ajouter un lot";
     var f = ["name", "category", "subcategory", "manufacturer", "catalog_ref", "lot", "serial",
              "qty_received", "qty_remaining", "unit", "date_reception", "date_manufacture",
-             "date_expiry", "location", "temperature", "source", "notes", "status", "min_level"];
+             "date_expiry", "location", "temperature", "source", "received_by", "notes", "status", "min_level"];
     f.forEach(function (k) {
       var e = $("#e_" + k); if (!e) return;
       e.value = r ? (r[k] == null ? "" : r[k]) : "";
@@ -531,6 +636,9 @@
     if (!r) { $("#e_date_reception").value = nowISO(); $("#e_status").value = "active"; }
     $("#e_srcHint").textContent = r ? ("Origine : " + (r.source || "—")) : "";
     /* Populate location suggestions from current DB locations */
+    var dcat = $("#catSuggestions");
+    if (dcat) dcat.innerHTML = cats().concat(["Réactif PCR", "Consommable", "Séquençage (Illumina)", "Labo mobile", "Équipement", "Contrôle / Calibrateur"])
+      .filter(function (v, i, a) { return v && a.indexOf(v) === i; }).map(function (c) { return '<option value="' + esc(c) + '">'; }).join("");
     var dloc = $("#locSuggestions");
     if (dloc) {
       var locs = Object.keys(
@@ -555,7 +663,7 @@
       date_expiry: get("date_expiry"),
       location: get("location") || "Non spécifié",
       temperature: get("temperature") || "Non spécifiée",
-      source: get("source") || "Saisie manuelle", notes: get("notes"),
+      source: get("source") || "Saisie manuelle", received_by: get("received_by"), notes: get("notes"),
       status: get("status") || "active", min_level: num(get("min_level")),
       last_update: nowISO()
     };
@@ -567,7 +675,7 @@
     } else {
       rec.id = "M" + Date.now().toString(36).toUpperCase();
       DB.push(rec);
-      logMove("in", rec.id, rec.name, rec.qty_remaining, "Réception — " + rec.source);
+      logMove("in", rec.id, rec.name, rec.qty_remaining, "Réception — " + rec.source, rec.received_by, rec.lot, rec.location);
     }
     save(); $("#mEdit").classList.remove("on");
     buildFilters(); render();
@@ -717,6 +825,26 @@
     if (MOVES.length > 4000) MOVES.length = 4000;
   }
 
+  /* ---------- Listes avec « Saisie manuelle » : ouvre un champ libre ---------- */
+  function manualWire(sel, ph) {
+    var s = $(sel); if (!s || s.dataset.manual) return;
+    s.dataset.manual = "1";
+    if (!Array.prototype.some.call(s.options, function (o) { return /^Saisie manuelle/.test(o.value || o.text); })) {
+      var o = document.createElement("option"); o.textContent = "Saisie manuelle…"; s.appendChild(o);
+    }
+    var t = document.createElement("input"); t.className = "manual-in"; t.placeholder = ph; t.style.display = "none"; t.style.marginTop = "6px";
+    t.id = s.id + "_manual"; s.parentNode.appendChild(t);
+    s.addEventListener("change", function () {
+      var on = /^Saisie manuelle/.test(s.value);
+      t.style.display = on ? "" : "none"; if (on) setTimeout(function () { t.focus(); }, 30);
+    });
+  }
+  function manualVal(sel) {
+    var s = $(sel); if (!s) return "";
+    if (/^Saisie manuelle/.test(s.value)) { var t = $(sel + "_manual"); return t ? t.value.trim() : ""; }
+    return s.value.trim();
+  }
+
   /* ================= RECEPTION ================= */
   function renderRecv() {
     var e = $("#rExpiry").value;
@@ -743,9 +871,12 @@
     e.preventDefault();
     var g = function (id) { var el = $(id); return el ? el.value.trim() : ""; };
     if (!g("#rName")) { toast("La désignation est obligatoire", "err"); return; }
+    if (/^Saisie manuelle/.test(g("#rCatSel")) && !manualVal("#rCatSel")) { toast("Précisez la catégorie (saisie manuelle)", "err"); return; }
+    if (/^Saisie manuelle/.test(g("#rSource")) && !manualVal("#rSource")) { toast("Précisez la source (saisie manuelle)", "err"); return; }
+    if (!g("#rWho")) { toast("Le nom du réceptionnaire est obligatoire", "err"); return; }
     var rec = {
       id: "R" + Date.now().toString(36).toUpperCase(),
-      name: g("#rName"), category: g("#rCatSel") || "Réactif PCR",
+      name: g("#rName"), category: manualVal("#rCatSel") || "Réactif PCR",
       subcategory: g("#rSub"), manufacturer: g("#rMan"),
       catalog_ref: g("#rRef"), lot: g("#rLot"), serial: "",
       qty_received: num(g("#rQty")), qty_remaining: num(g("#rQty")),
@@ -755,7 +886,7 @@
       expiry_flag: g("#rExpiry") ? "ok" : "missing",
       location: g("#rLocSel") || g("#rLocNew") || "Non spécifié",
       temperature: g("#rTemp") || "Non spécifiée",
-      source: g("#rSource") || "Réception directe",
+      source: manualVal("#rSource") || "Réception directe", received_by: g("#rWho"),
       notes: g("#rNote"), status: "active", min_level: null,
       last_update: nowISO()
     };
@@ -775,6 +906,7 @@
       "Réception — " + rec.source + " · PVIR", g("#rWho"), rec.lot, rec.location);
     save(); buildFilters(); render();
     $("#recvForm").reset(); $("#rCheck").style.display = "none";
+    $$(".manual-in").forEach(function (x) { x.value = ""; x.style.display = "none"; });
     toast("Lot réceptionné et enregistré — " + rec.name, "ok");
     pushRemote("upsert", { record: rec });
     pushRemote("move", { move: inMv });
@@ -817,7 +949,8 @@
         "<small>" + esc(rp.d) + "</small></h3>" +
         '<span class="pill ' + (n ? "info" : "ok") + '">' + n + " lot" + (n > 1 ? "s" : "") + "</span>" +
         '<button class="btn btn-ghost btn-sm" data-prev="' + rp.id + '">Aperçu</button>' +
-        '<button class="btn btn-sm" data-csv="' + rp.id + '"' + (n ? "" : " disabled") + ">Exporter CSV</button></div>" +
+        '<button class="btn btn-sm" data-csv="' + rp.id + '"' + (n ? "" : " disabled") + ">Exporter CSV</button>" +
+        '<button class="btn btn-sm btn-pdf" data-pdf="' + rp.id + '"' + (n ? "" : " disabled") + ">Exporter PDF</button></div>" +
         '<div class="card-b flush" id="prev-' + rp.id + '" style="display:none"></div></div>';
     });
     // Movement journal
@@ -825,7 +958,8 @@
       "<small>Entrées, sorties, rebuts et modifications — traçabilité complète</small></h3>" +
       '<span class="pill info">' + MOVES.length + " mouvement" + (MOVES.length > 1 ? "s" : "") + "</span>" +
       '<button class="btn btn-ghost btn-sm" id="prevMoves">Aperçu</button>' +
-      '<button class="btn btn-sm" id="csvMoves"' + (MOVES.length ? "" : " disabled") + ">Exporter CSV</button></div>" +
+      '<button class="btn btn-sm" id="csvMoves"' + (MOVES.length ? "" : " disabled") + ">Exporter CSV</button>" +
+      '<button class="btn btn-sm btn-pdf" id="pdfMoves"' + (MOVES.length ? "" : " disabled") + ">Exporter PDF</button></div>" +
       '<div class="card-b flush" id="prev-moves" style="display:none"></div></div>';
     $("#repList").innerHTML = h;
 
@@ -835,6 +969,17 @@
         exportRows(rp.id, rp.f());
       };
     });
+    $$("#repList [data-pdf]").forEach(function (b) {
+      b.onclick = function () {
+        var rp = REPORTS.filter(function (x) { return x.id === b.dataset.pdf; })[0];
+        exportLotsPDF(rp.n, rp.f(), rp.d);
+      };
+    });
+    $("#pdfMoves").onclick = function () {
+      var K = { in: "Entrée", out: "Sortie", scrap: "Rebut", edit: "Modification", del: "Suppression" };
+      exportPDF("Journal des mouvements", ["Horodatage", "Type", "Désignation", "Lot", "Quantité", "Emplacement", "Agent", "Observation"],
+        MOVES.map(function (m) { return [(m.ts || "").replace("T", " ").slice(0, 16), K[m.kind] || m.kind, m.name || "", m.lot || "", m.qty == null ? "" : String(m.qty), m.loc || "", m.who || m.user || "", m.note || ""]; }));
+    };
     $$("#repList [data-prev]").forEach(function (b) {
       b.onclick = function () {
         var rp = REPORTS.filter(function (x) { return x.id === b.dataset.prev; })[0];
@@ -1353,7 +1498,14 @@
     else if (VIEW === "users")    renderUsers();
     else if (VIEW === "audit")    renderAudit();
     else if (VIEW === "cfg")   renderCfg();
+    else if (VIEW === "forms" && window.LSForms) window.LSForms.render($("#v-forms"));
   }
+  window.LS_API = {
+    db: function () { return DB; }, moves: function () { return MOVES; }, user: function () { return CURRENT_USER; },
+    toast: function (m, k) { toast(m, k); }, esc: esc, band: band,
+    online: function () { return !!(ONLINE && CFG.gsUrl); },
+    gs: function (a, p) { return gsCall(a, p); }
+  };
   var VIEWS_ADMIN = ["rep","ana","order","admindash","users","audit","upload","cfg"];
   var VIEWS_SUPER = ["users","audit","admindash"];
 
@@ -1372,6 +1524,13 @@
     };
     $("#btnAdd").onclick = function () { openEdit(null); };
     $("#btnExportInv").onclick = function () { exportRows("inventaire_filtre", filtered()); };
+    if ($("#btnExportInvPdf")) $("#btnExportInvPdf").onclick = function () {
+      var parts = [["#fCat", "Catégorie"], ["#fLoc", "Emplacement"], ["#fTemp", "Température"], ["#fBand", "Alerte"]].map(function (p) { var e = $(p[0]); return e && e.value ? p[1] + " : " + (e.options ? e.options[e.selectedIndex].text : e.value) : ""; }).filter(Boolean);
+      if ($("#fQ").value) parts.unshift("Recherche : " + $("#fQ").value);
+      exportLotsPDF("Inventaire filtré", filtered(), parts.join(" · ") || "Tous les lots");
+    };
+    manualWire("#rCatSel", "Précisez la catégorie");
+    manualWire("#rSource", "Précisez la source / le financement");
     $("#editForm").onsubmit = saveEdit;
     $("#oQ").addEventListener("input", renderOut);
     $("#issueForm").onsubmit = confirmIssue;
@@ -1447,21 +1606,15 @@
     try {
       var wb = window.XLSX.read(ab, { type:"array", cellDates:true });
       var ws = wb.Sheets[wb.SheetNames[0]];
-      var rows = window.XLSX.utils.sheet_to_json(ws, { raw:false, defval:"" });
-      showUploadPreview(rows);
+      var aoa = window.XLSX.utils.sheet_to_json(ws, { header:1, raw:false, defval:"" });
+      showUploadPreview(rowsFromAOA(aoa));
     } catch(e) { toast("Erreur de lecture : " + e.message, "err"); }
   }
   function parseCSVUpload(text) {
-    var lines = text.replace(/\r/g,"").split("\n").filter(Boolean);
+    var lines = text.replace(/^\uFEFF/,"").replace(/\r/g,"").split("\n").filter(Boolean);
     if (!lines.length) return;
-    var sep = lines[0].includes(";") ? ";" : ",";
-    var hdr = lines[0].split(sep).map(function(h){ return h.replace(/^"|"$/g,"").trim(); });
-    var rows = lines.slice(1).map(function(l){
-      var o = {}, vals = l.split(sep).map(function(v){ return v.replace(/^"|"$/g,"").trim(); });
-      hdr.forEach(function(k,i){ o[k] = vals[i] || ""; });
-      return o;
-    });
-    showUploadPreview(rows);
+    var sep = lines.slice(0,5).join("\n").split(";").length > lines.slice(0,5).join("\n").split(",").length ? ";" : ",";
+    showUploadPreview(rowsFromAOA(lines.map(function(l){ return l.split(sep).map(function(v){ return v.replace(/^"|"$/g,"").trim(); }); })));
   }
   var COL_MAP = {
     "désignation":"name","designation":"name","description":"name","article":"name","reagent":"name",
@@ -1474,13 +1627,39 @@
     "date réception":"date_reception","date reception":"date_reception","date de reception":"date_reception",
     "date péremption":"date_expiry","date expiry":"date_expiry","expiration":"date_expiry","date de expiration":"date_expiry","expiry date":"date_expiry",
     "date fabrication":"date_manufacture","manufacture date":"date_manufacture",
+    "date de fabrication":"date_manufacture","date de peremption":"date_expiry",
+    "date peremption":"date_expiry","peremption":"date_expiry",
+    "seuil minimum":"min_level","min level":"min_level","stock minimum":"min_level",
+    "niveau minimum":"min_level","minimum":"min_level",
     "emplacement":"location","location":"location","storage place":"location","salle":"location",
     "température":"temperature","temperature":"temperature","temp":"temperature",
     "catégorie":"category","category":"category","type":"category",
     "sous-catégorie":"subcategory","subcategory":"subcategory",
-    "source":"source","notes":"notes","remarques":"notes","observations":"notes","remark":"notes",
+    "source":"source","source financement":"source","financement":"source","provenance":"source","bailleur":"source",
+    "receptionnaire":"received_by","réceptionnaire":"received_by","recu par":"received_by","reçu par":"received_by","recipient":"received_by","received by":"received_by",
+    "agent receptionnaire":"received_by","nom du receptionnaire":"received_by","receptionne par":"received_by","notes":"notes","remarques":"notes","observations":"notes","remark":"notes",
     "statut":"status","status":"status"
   };
+  /* Détection de la ligne d'en-têtes (les modèles INSAPT ont une ligne de titre au-dessus) */
+  function colKey(h) {
+    var full = normalH(h), first = normalH(String(h).split(/\n/)[0]);
+    if (COL_MAP[full]) return COL_MAP[full];
+    if (COL_MAP[first]) return COL_MAP[first];
+    var keys = Object.keys(COL_MAP).map(function (k) { return [normalH(k), COL_MAP[k]]; }).sort(function (a, b) { return b[0].length - a[0].length; });
+    for (var i = 0; i < keys.length; i++) if (keys[i][0].length > 3 && first.indexOf(keys[i][0]) === 0) return keys[i][1];
+    return null;
+  }
+  function rowsFromAOA(aoa) {
+    var best = 0, bestN = -1;
+    for (var i = 0; i < Math.min(aoa.length, 8); i++) {
+      var n = (aoa[i] || []).filter(function (c) { return c && colKey(String(c)); }).length;
+      if (n > bestN) { bestN = n; best = i; }
+    }
+    var hdr = (aoa[best] || []).map(function (c) { return String(c || "").trim(); });
+    return aoa.slice(best + 1).filter(function (r) { return r && r.some(function (c) { return String(c).trim(); }); }).map(function (r) {
+      var o = {}; hdr.forEach(function (k, j) { if (k) o[k] = r[j] == null ? "" : String(r[j]).trim(); }); return o;
+    });
+  }
   function normalH(h) {
     return h.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim();
   }
@@ -1488,9 +1667,9 @@
     var out = { category:"Import", subcategory:"", manufacturer:"", catalog_ref:"", lot:"",
                 qty_received:null, qty_remaining:null, unit:"unité", date_reception:"",
                 date_expiry:"", date_manufacture:"", location:"Non spécifié",
-                temperature:"Non spécifiée", source:"Import fichier", notes:"", status:"active" };
+                temperature:"Non spécifiée", source:"", received_by:"", notes:"", status:"active" };
     Object.keys(raw).forEach(function(k) {
-      var mapped = COL_MAP[normalH(k)];
+      var mapped = colKey(k);
       if (mapped && raw[k]) out[mapped] = raw[k];
     });
     out.name = out.name || ""; 
@@ -1515,8 +1694,17 @@
       var ex = DB.filter(function(d){ return d.lot && r.lot && normalH(d.lot)===normalH(r.lot) && normalH(d.name)===normalH(r.name); })[0];
       if (ex) upd++; else new_++;
     });
+    var noSrc = UPLOAD_PREVIEW.filter(function(r){ return !r.source; }).length, noRec = UPLOAD_PREVIEW.filter(function(r){ return !r.received_by; }).length;
     var h = '<div class="note ok"><b>' + UPLOAD_PREVIEW.length + ' lignes reconnues</b> — ' +
       new_ + ' nouveau(x) lot(s) · ' + upd + ' mise(s) à jour</div>';
+    h += '<div class="card" style="margin:12px 0"><div class="card-h"><h3>Source et réceptionnaire<small>Obligatoires — appliqués aux lignes du fichier qui ne les précisent pas (' +
+      noSrc + ' sans source · ' + noRec + ' sans réceptionnaire)</small></h3></div><div class="card-b"><div class="grid3">' +
+      '<div class="field"><label for="impSrc">Source / financement *</label><select id="impSrc"><option value="">— Choisir —</option>' +
+      ["Achat direct INSAPT","Marché public (CPM)","Don — OMS","Don — Fonds Mondial","Don — UNICEF","Don — MSF Suisse","Don — Bundeswehr / Labo mobile","Don — autre partenaire","Transfert interne","Réception directe"]
+        .map(function(x){ return '<option>'+esc(x)+'</option>'; }).join("") + '<option>Saisie manuelle…</option></select></div>' +
+      '<div class="field"><label for="impWho">Nom du réceptionnaire *</label><input id="impWho" placeholder="Prénom Nom, fonction" value="' + esc(CURRENT_USER ? (CURRENT_USER.name || "") : "") + '"></div>' +
+      '<div class="field"><label for="impDate">Date de réception (si absente)</label><input id="impDate" type="date" value="' + nowISO() + '"></div></div>' +
+      '<label style="display:flex;gap:8px;align-items:center;font-size:13px"><input id="impForce" type="checkbox" style="width:auto;margin:0"> Appliquer aussi aux lignes qui ont déjà une source / un réceptionnaire</label></div></div>';
     h += '<div class="tbl-scroll"><table class="tbl"><thead><tr>' +
       '<th>Désignation</th><th>Lot</th><th class="num">Qté reçue</th><th class="num">Qté rest.</th>' +
       '<th>Péremption</th><th>Emplacement</th><th>Action</th></tr></thead><tbody>';
@@ -1534,10 +1722,20 @@
       '<button class="btn btn-ghost" id="btnImportCancel">Annuler</button></div>';
     $("#uploadPreview").innerHTML = h;
     $("#btnImportConfirm").onclick = confirmImport;
+    manualWire("#impSrc", "Précisez la source / le financement");
     $("#btnImportCancel").onclick = function(){ $("#uploadPreview").innerHTML=""; UPLOAD_PREVIEW=[]; };
   }
   function confirmImport() {
     var added=0, updated=0;
+    var src = manualVal("#impSrc"), who = ($("#impWho").value || "").trim(), dRec = $("#impDate").value, force = $("#impForce").checked;
+    var missSrc = UPLOAD_PREVIEW.some(function(r){ return !r.source; }), missWho = UPLOAD_PREVIEW.some(function(r){ return !r.received_by; });
+    if ((missSrc || force) && !src) { toast("Indiquez la source / le financement de ce stock", "err"); $("#impSrc").focus(); return; }
+    if ((missWho || force) && !who) { toast("Indiquez le nom du réceptionnaire", "err"); $("#impWho").focus(); return; }
+    UPLOAD_PREVIEW.forEach(function(r) {
+      if (src && (force || !r.source)) r.source = src;
+      if (who && (force || !r.received_by)) r.received_by = who;
+      if (!r.date_reception && dRec) r.date_reception = dRec;
+    });
     UPLOAD_PREVIEW.forEach(function(r) {
       var ex = DB.filter(function(d){ return d.lot && r.lot && normalH(d.lot)===normalH(r.lot) && normalH(d.name)===normalH(r.name); })[0];
       if (ex) {
@@ -1547,6 +1745,8 @@
         r.id = "IMP" + Date.now().toString(36).toUpperCase() + (added);
         r.last_update = nowISO();
         DB.push(r);
+        logMove("in", r.id, r.name, r.qty_remaining != null ? r.qty_remaining : r.qty_received, "Import fichier — " + (r.source || ""), r.received_by, r.lot, r.location);
+        pushRemote("move", { move: MOVES[0] });
         pushRemote("upsert", { record: r }); added++;
       }
     });

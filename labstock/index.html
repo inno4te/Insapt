@@ -60,6 +60,7 @@
       <a data-v="out"><span class="ic">📤</span>Sortie de stock<span class="badge" id="navBadgeOut" style="display:none">0</span></a>
       <a data-v="recv"><span class="ic">📥</span>Réception</a>
       <a data-v="upload"><span class="ic">📂</span>Importer données</a>
+      <a data-v="forms"><span class="ic">🗂</span>Formulaires</a>
       <div class="nav-lbl role-admin">Pilotage</div>
       <a data-v="rep" class="role-admin"><span class="ic">📄</span>Rapports</a>
       <a data-v="order" class="role-admin"><span class="ic">🛒</span>Niveaux de commande</a>
@@ -128,6 +129,7 @@
             <h3>Recherche et filtres</h3>
             <button class="btn btn-ghost btn-sm" id="fClear">Réinitialiser</button>
             <button class="btn btn-ghost btn-sm" id="btnExportInv">Exporter CSV</button>
+            <button class="btn btn-ghost btn-sm" id="btnExportInvPdf">Exporter PDF</button>
             <button class="btn btn-sm" id="btnAdd">+ Ajouter un lot</button>
           </div>
           <div class="card-b">
@@ -264,7 +266,7 @@
             <div class="card-h"><h3>Contrôle de réception</h3></div>
             <div class="card-b">
               <div class="grid2">
-                <div class="field"><label for="rWho">Agent réceptionnaire</label>
+                <div class="field"><label for="rWho">Agent réceptionnaire *</label>
                   <input id="rWho" placeholder="Nom et fonction"></div>
                 <div class="field"><label for="rNote">Observations / n° PVIR</label>
                   <input id="rNote" placeholder="Référence PVIR, état chaîne du froid, réserves"></div>
@@ -279,8 +281,7 @@
       <section class="view" id="v-rep">
         <div class="note">
           <b>Rapports réglementaires</b>
-          Tous les rapports sont exportables en CSV (séparateur point-virgule, encodage UTF-8 avec BOM) pour ouverture
-          directe dans Excel ou transfert vers un autre système. Les rapports de péremption alimentent le
+          Tous les rapports sont exportables en CSV (ouverture directe dans Excel) ou en PDF (impression et archivage). Les rapports de péremption alimentent le
           Rapport Mensuel Consommation vs. Péremption (formulaire R-3.C).
         </div>
         <div id="repList"></div>
@@ -377,6 +378,8 @@
       </section>
 
       <!-- ══════ UPLOAD ══════ -->
+      <section class="view" id="v-forms"></section>
+
       <section class="view" id="v-upload">
         <!-- rendered by renderUpload() -->
       </section>
@@ -422,7 +425,7 @@
         <p style="font-size:12px;color:var(--slate);margin:0 0 14px" id="e_srcHint"></p>
         <div class="field"><label for="e_name">Désignation *</label><input id="e_name" required></div>
         <div class="grid3">
-          <div class="field"><label for="e_category">Catégorie</label><input id="e_category"></div>
+          <div class="field"><label for="e_category">Catégorie</label><input id="e_category" list="catSuggestions" autocomplete="off" placeholder="Choisissez ou saisissez"><datalist id="catSuggestions"></datalist></div>
           <div class="field"><label for="e_subcategory">Sous-catégorie</label><input id="e_subcategory"></div>
           <div class="field"><label for="e_manufacturer">Fabricant</label><input id="e_manufacturer"></div>
         </div>
@@ -455,7 +458,7 @@
             </datalist></div>
           <div class="field"><label for="e_min_level">Seuil minimum</label><input id="e_min_level" type="number" step="any"></div>
         </div>
-        <div class="grid2">
+        <div class="grid3">
           <div class="field"><label for="e_source">Source / financement</label>
             <input id="e_source" list="srcSuggestions" autocomplete="off" placeholder="Sélectionnez ou saisissez">
             <datalist id="srcSuggestions">
@@ -471,6 +474,7 @@
               <option value="Réception directe">
               <option value="Saisie manuelle">
             </datalist></div>
+          <div class="field"><label for="e_received_by">Réceptionnaire</label><input id="e_received_by" placeholder="Nom de l'agent réceptionnaire"></div>
           <div class="field"><label for="e_status">Statut</label>
             <select id="e_status">
               <option value="active">En service</option>
@@ -519,5 +523,6 @@
 
 <script src="labstock-data.js"></script>
 <script src="labstock.js"></script>
+<script src="labstock-forms.js"></script>
 </body>
 </html>
